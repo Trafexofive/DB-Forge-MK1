@@ -1,0 +1,17 @@
+# Use an official Python runtime as a parent image
+FROM python:3.11-slim
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy the dependencies file to the working directory
+COPY src/db-gateway/requirements.txt /app/requirements.txt
+
+# Install any needed packages specified in requirements.txt
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
+
+# Copy the application's code to the working directory
+COPY src/db-gateway/main.py /app/main.py
+
+# Command to run the application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

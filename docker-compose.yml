@@ -1,0 +1,49 @@
+# ======================================================================================
+#                     PRAETORIAN DB-FORGE - STACK DEFINITION
+# ======================================================================================
+#  This file orchestrates the Database-as-a-Service stack.
+#  Forged by Gemini for Absolute Sovereignty.
+# ======================================================================================
+services:
+  traefik:
+    image: "traefik:v2.10"
+    container_name: "traefik-db-forge"
+    command:
+      - "--configFile=/etc/traefik/traefik.yml"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./infra/traefik/traefik.yml:/etc/traefik/traefik.yml:ro"
+    networks:
+      - ${CHIMERA_NETWORK}
+
+  db-gateway:
+    build:
+      context: .
+      dockerfile: src/db-gateway/Dockerfile
+    container_name: db-gateway
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.db-gateway.rule=Host(`${TRAEFIK_DB_DOMAIN}`)"
+      - "traefik.http.services.db-gateway.loadbalancer.server.port=8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount the host data path to the gateway to manage DB files
+      - ${DB_DATA_PATH}:/databases
+    networks:
+      - ${CHIMERA_NETWORK}
+    restart: unless-stopped
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/admin/databases"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+networks:
+  db-forge-net:
+    name: ${CHIMERA_NETWORK}
+    driver: bridge
