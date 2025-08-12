@@ -1,50 +1,48 @@
 # Praetorian DB-Forge
 
-**Forged by Gemini in accordance with the Himothy Covenant.**
+Praetorian DB-Forge is a containerized Database-as-a-Service (DBaaS) platform that simplifies managing isolated database instances. It provides a RESTful API to dynamically create, manage, and interact with individual databases. Built with SQLite as the initial backend, it prioritizes ease of use, portability, and direct control over your data.
 
-Praetorian DB-Forge is a highly available, containerized Database-as-a-Service (DBaaS) platform designed for AI agents and automated systems. It provides a robust RESTful API gateway for dynamically spawning, managing, and interacting with isolated database instances. The initial implementation leverages SQLite for its portability, simplicity, and emphasis on data sovereignty.
+## Key Features
 
-## ✨ Key Features
+*   **Dynamic Database Provisioning:** Spin up or tear down isolated database environments with simple API calls.
+*   **Persistent Data:** Each database's data is stored directly on your host filesystem, ensuring it remains safe and accessible even if containers are removed or restarted.
+*   **RESTful API:** Interact with your databases using a straightforward HTTP API for common operations like CRUD, schema changes, and raw SQL queries.
+*   **Isolated Instances:** Every database runs in its own dedicated Docker container, providing clear separation and preventing conflicts.
+*   **Extensible Design:** The architecture is designed to easily support other database backends (like PostgreSQL) in the future.
 
-*   **Dynamic Database Provisioning:** Create and destroy isolated database environments with simple API calls.
-*   **Absolute Data Sovereignty:** Each database's data is persistently stored on the host filesystem, ensuring full ownership and data survival across container lifecycles.
-*   **RESTful Data Access:** A comprehensive API for all common database operations (CRUD, schema manipulation, raw queries).
-*   **Container-Level Multi-tenancy:** Each database instance operates in its own isolated Docker container, guaranteeing separation and preventing cross-contamination.
-*   **Pluggable Backend Design:** Architected for future extensibility to support various database backends beyond SQLite.
+## Architecture
 
-## 🏗️ Architecture Overview
+The system consists of two main parts:
 
-The system comprises two main components:
+1.  **DB Worker Base (`db-worker-base`):** A minimal Docker image (based on `alpine:latest` with `sqlite3`) that serves as a lightweight template for each database instance. These workers essentially act as containers for your database files.
+2.  **DB Gateway (`db-gateway`):** A FastAPI application that acts as the central hub. It handles:
+    *   **Database Management:** API endpoints to create, remove, and list database instances.
+    *   **Data Operations:** Translates your HTTP requests into SQL commands, executes them against the appropriate database files (which are mounted from your host), and returns results as JSON.
 
-1.  **DB Worker Base (`db-worker-base`):** A minimal Docker image (`alpine:latest` with `sqlite3`) serving as a lightweight template for all spawned database instances. These workers act as data volume holders.
-2.  **DB Gateway (`db-gateway`):** The core FastAPI application that functions as both:
-    *   **Orchestrator:** Manages the lifecycle of database instances (spawn, prune, list) via administrative endpoints.
-    *   **Data Plane:** Translates HTTP requests into SQL commands, executes them against the appropriate database files (stored on a mounted volume), and returns results as JSON.
+All external network traffic is managed by a Traefik reverse proxy, providing a single entry point to the DB-Forge services.
 
-All external traffic is routed through a Traefik reverse proxy, providing a unified entry point.
+## Getting Started
 
-## 🚀 Getting Started
-
-All primary operations are managed via the `Makefile`.
+All common development and deployment tasks are automated using the `Makefile`.
 
 ### Prerequisites
 
-Ensure you have the following installed:
+Make sure you have the following installed:
 
 *   [Docker](https://docs.docker.com/get-docker/)
 *   [Docker Compose](https://docs.docker.com/compose/install/)
 
 ### 1. Configure Your Environment
 
-Copy the example environment file and customize it as needed.
+Copy the example environment file and adjust any settings as needed:
 
 ```bash
 cp .env.example .env
 ```
 
-### 2. Ignite the Forge
+### 2. Start the Services
 
-This command builds the necessary Docker images and starts the DB Gateway and Traefik proxy.
+This command builds the necessary Docker images and starts the DB Gateway and Traefik proxy:
 
 ```bash
 make up
@@ -53,26 +51,26 @@ make up
 ### 3. Access the API
 
 The DB Gateway is accessible via Traefik. By default, it routes traffic to `http://db.localhost`.
-Refer to `docs/API.md` for the complete API specification and usage examples.
+For detailed API endpoints and usage examples, refer to `docs/API.md`.
 
-## 🧪 Testing
+## Testing
 
-The project includes a comprehensive suite of API tests to ensure functionality and stability.
+The project includes a comprehensive suite of API tests to verify functionality.
 
-To run the tests, ensure your Docker stack is up (`make up`), then execute:
+To run the tests, ensure your Docker stack is running (`make up`), then execute:
 
 ```bash
 make test
 ```
 
 This command will:
-*   Clean up any leftover test databases from previous runs.
-*   Restart the `db-gateway` service to ensure a clean state.
-*   Execute the API test suite, interacting with the running gateway.
+*   Clean up any test databases from previous runs.
+*   Restart the `db-gateway` service to ensure a fresh state.
+*   Execute the API test suite against the running gateway.
 
-## 🧹 Cleanup
+## Cleanup
 
-To shut down the stack and remove all associated containers, networks, and persistent data volumes:
+To shut down the entire stack and remove all associated containers, networks, and persistent data:
 
 ```bash
 make clean
@@ -80,10 +78,10 @@ make clean
 
 **⚠️ WARNING:** The `make clean` command will **permanently delete all database files** stored in the `db-data/` directory. Use with caution.
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please refer to our (future) `CONTRIBUTING.md` for guidelines.
 
-## 📄 License
+## License
 
 This project is licensed under the [MIT License](LICENSE).
