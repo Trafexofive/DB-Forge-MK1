@@ -1,27 +1,130 @@
 #!/bin/bash
 
-# client.sh: A simple curl wrapper for the DB Gateway API
-# Usage: client.sh <METHOD> <ENDPOINT> [JSON_PAYLOAD_FILE]
-
-METHOD=$1
-ENDPOINT=$2
-JSON_PAYLOAD_FILE=$3
+# client.sh: Simplified CLI for Praetorian DB-Forge API interactions
 
 BASE_URL="http://db.localhost" # Exposed via Traefik
 
-if [ -z "$METHOD" ] || [ -z "$ENDPOINT" ]; then
-    echo "Usage: $0 <METHOD> <ENDPOINT> [JSON_PAYLOAD_FILE]"
-    exit 1
-fi
+# --- Helper Function for API Calls ---
+_call_api() {
+    local METHOD=$1
+    local ENDPOINT=$2
+    local JSON_PAYLOAD_FILE=$3
 
-URL="${BASE_URL}${ENDPOINT}"
+    local URL="${BASE_URL}${ENDPOINT}"
+    local CURL_CMD="curl -s -X $METHOD"
 
-if [ -n "$JSON_PAYLOAD_FILE" ]; then
-    if [ ! -f "$JSON_PAYLOAD_FILE" ]; then
-        echo "Error: JSON payload file not found: $JSON_PAYLOAD_FILE"
-        exit 1
+    if [ -n "$JSON_PAYLOAD_FILE" ]; then
+        if [ ! -f "$JSON_PAYLOAD_FILE" ]; then
+            echo "Error: JSON payload file not found: $JSON_PAYLOAD_FILE" >&2
+            return 1
+        fi
+        CURL_CMD+=" -H \"Content-Type: application/json\" -d \"@$JSON_PAYLOAD_FILE\""
     fi
-    curl -s -X "$METHOD" -H "Content-Type: application/json" -d "@$JSON_PAYLOAD_FILE" "$URL"
-else
-    curl -s -X "$METHOD" "$URL"
-fi
+    CURL_CMD+=" \"$URL\""
+
+    eval "$CURL_CMD"
+}
+
+# --- User-Friendly Commands ---
+
+# Admin API
+spawn_db() {
+    local db_name=$1
+    if [ -z "$db_name" ]; then
+        echo "Usage: client.sh spawn_db <db_name>" >&2
+        return 1
+    fi
+    _call_api "POST" "/admin/databases/spawn/$db_name"
+}
+
+prune_db() {
+    local db_name=$1
+    if [ -z "$db_name" ]; then
+        echo "Usage: client.sh prune_db <db_name>" >&2
+        return 1
+    fi
+    _call_api "POST" "/admin/databases/prune/$db_name"
+}
+
+list_dbs() {
+    _call_api "GET" "/admin/databases"
+}
+
+get_root() {
+    _call_api "GET" "/"
+}
+
+# Data Plane API (simplified examples)
+# For complex queries, users might still need to provide JSON files or use raw_query
+create_table() {
+    local db_name=$1
+    local table_name=$2
+    local columns_json_file=$3 # Path to a JSON file defining columns
+
+    if [ -z "$db_name" ] || [ -z "$table_name" ] || [ -z "$columns_json_file" ]; then
+        echo "Usage: client.sh create_table <db_name> <table_name> <columns_json_file>" >&2
+        return 1
+    fi
+    _call_api "POST" "/api/db/$db_name/tables" "$columns_json_file"
+}
+
+insert_rows() {
+    local db_name=$1
+    local table_name=$2
+    local rows_json_file=$3 # Path to a JSON file defining rows
+
+    if [ -z "$db_name" ] || [ -z "$table_name" ] || [ -z "$rows_json_file" ]; then
+        echo "Usage: client.sh insert_rows <db_name> <table_name> <rows_json_file>" >&2
+        return 1
+    fi
+    _call_api "POST" "/api/db/$db_name/tables/$table_name/rows" "$rows_json_file"
+}
+
+get_rows() {
+    local db_name=$1
+    local table_name=$2
+    local query_params=$3 # e.g., "status=pending&user=alice"
+
+    if [ -z "$db_name" ] || [ -z "$table_name" ]; then
+        echo "Usage: client.sh get_rows <db_name> <table_name> [query_params]" >&2
+        return 1
+    fi
+    local ENDPOINT="/api/db/$db_name/tables/$table_name/rows"
+    if [ -n "$query_params" ]; then
+        ENDPOINT+="?$query_params"
+    fi
+    _call_api "GET" "$ENDPOINT"
+}
+
+raw_query() {
+    local db_name=$1
+    local query_json_file=$2 # Path to a JSON file defining the query and params
+
+    if [ -z "$db_name" ] || [ -z "$query_json_file" ]; then
+        echo "Usage: client.sh raw_query <db_name> <query_json_file>" >&2
+        return 1
+    fi
+    _call_api "POST" "/api/db/$db_name/query" "$query_json_file"
+}
+
+# --- Main execution ---
+case "$1" in
+    spawn_db|prune_db|list_dbs|get_root|create_table|insert_rows|get_rows|raw_query)
+        "$@"
+        ;;
+    *)
+        echo "Usage: client.sh <command> [arguments]"
+        echo "Commands:"
+        echo "  Admin API:"
+        echo "    spawn_db <db_name>"
+        echo "    prune_db <db_name>"
+        echo "    list_dbs"
+        echo "    get_root"
+        echo "  Data Plane API:"
+        echo "    create_table <db_name> <table_name> <columns_json_file>"
+        echo "    insert_rows <db_name> <table_name> <rows_json_file>"
+        echo "    get_rows <db_name> <table_name> [query_params]"
+        echo "    raw_query <db_name> <query_json_file>"
+        exit 1
+        ;;
+esac

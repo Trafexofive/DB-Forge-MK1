@@ -61,15 +61,21 @@ ssh:
 	@$(COMPOSE) exec db-gateway /bin/bash
 
 # --- TESTING ---
-test: clean-test-dbs
-	@echo -e "${CYAN}Restarting db-gateway to ensure clean state...${NC}"
-	@$(COMPOSE) restart db-gateway
+test:
+	@echo -e "${CYAN}Ensuring all services are down before cleanup...${NC}"
+	@$(COMPOSE) down
+	@$(MAKE) clean-test-dbs
+	@echo -e "${CYAN}Bringing services back up for testing...${NC}"
+	@$(COMPOSE) up -d
 	@echo -e "${CYAN}Running API tests...${NC}"
 	@./scripts/test.sh
 
 clean-test-dbs:
 	@echo -e "${RED}Cleaning up test databases...${NC}"
+	# Stop and remove all db-worker containers
 	-@for id in $$(docker ps -a -q --filter "label=db-worker"); do docker stop $$id && docker rm -f $$id; done
+	# Remove the persistent data directory
+	sleep 1 # Give Docker a moment to release file locks
 	@rm -rf ./db-data
 
 # --- SANITIZATION ---
