@@ -14,7 +14,7 @@ from typing import List, Dict, Any, Optional
 TRAEFIK_DB_DOMAIN = os.getenv("TRAEFIK_DB_DOMAIN", "db.localhost")
 CHIMERA_NETWORK = os.getenv("CHIMERA_NETWORK", "db-forge-net")
 DB_WORKER_IMAGE = os.getenv("DB_WORKER_IMAGE", "db-worker-base:latest")
-DB_DATA_PATH = os.getenv("DB_DATA_PATH", "/databases") # Inside container
+DB_DATA_PATH = "/databases"
 
 # Initialize Docker client
 try:
@@ -241,7 +241,7 @@ async def get_rows(db_name: str, table_name: str, request: Request):
     if filters:
         where_clauses = []
         for key, value in filters.items():
-            where_clauses.append(f"'{key}' = ?")
+            where_clauses.append(f"{key} = ?")
             params.append(value)
         sql += " WHERE " + " AND ".join(where_clauses)
 

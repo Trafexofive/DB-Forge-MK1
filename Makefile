@@ -60,6 +60,18 @@ logs:
 ssh:
 	@$(COMPOSE) exec db-gateway /bin/bash
 
+# --- TESTING ---
+test: clean-test-dbs
+	@echo -e "${CYAN}Restarting db-gateway to ensure clean state...${NC}"
+	@$(COMPOSE) restart db-gateway
+	@echo -e "${CYAN}Running API tests...${NC}"
+	@./scripts/test.sh
+
+clean-test-dbs:
+	@echo -e "${RED}Cleaning up test databases...${NC}"
+	-@for id in $$(docker ps -a -q --filter "label=db-worker"); do docker stop $$id && docker rm -f $$id; done
+	@rm -rf ./db-data
+
 # --- SANITIZATION ---
 clean:
 	@echo -e "${RED}DANGER: Obliterating all stack containers, networks, and data volumes...${NC}"
@@ -67,4 +79,4 @@ clean:
 	-@for id in $$(docker ps -a -q --filter "label=db-worker"); do docker stop $$id && docker rm -f $$id; done
 	@rm -rf ./db-data
 
-.PHONY: help up down re build status logs ssh clean
+.PHONY: help up down re build status logs ssh clean test clean-test-dbs

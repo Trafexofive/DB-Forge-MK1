@@ -2,4 +2,4 @@ fastapi
 uvicorn
 docker
 pydantic
-aio-sqlite
+aiosqlite

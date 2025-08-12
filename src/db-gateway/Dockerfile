@@ -4,6 +4,9 @@ FROM python:3.11-slim
 # Set the working directory in the container
 WORKDIR /app
 
+# Install curl
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 # Copy the dependencies file to the working directory
 COPY src/db-gateway/requirements.txt /app/requirements.txt
 
