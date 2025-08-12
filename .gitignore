@@ -2,6 +2,8 @@
 .DS_Store
 .env
 *.log
+GEMINI.md
+BUILD_PLAN.md
 
 # Python
 __pycache__/
