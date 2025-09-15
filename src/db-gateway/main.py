@@ -43,6 +43,60 @@ app.add_middleware(
 )
 
 # ======================================================================================
+#                               Structured Error Handling
+# ======================================================================================
+class ErrorResponse(BaseModel):
+    """Standardized error response format."""
+    error: Dict[str, Any] # Contains 'code', 'message', 'details' (optional)
+
+class StructuredHTTPException(HTTPException):
+    """Custom exception to carry structured error details."""
+    def __init__(self, status_code: int, code: str, message: str, details: Optional[Any] = None):
+        super().__init__(status_code=status_code, detail=message)
+        self.code = code
+        self.details = details
+
+@app.exception_handler(StructuredHTTPException)
+async def structured_exception_handler(request: Request, exc: StructuredHTTPException):
+    """Handle StructuredHTTPException and return a standardized error response."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": exc.code,
+                "message": exc.detail,
+                "status": exc.status_code,
+                "details": exc.details
+            }
+        },
+    )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle standard FastAPI HTTPException and wrap it in our standardized format."""
+    # Map common FastAPI/HTTP status codes to our internal error codes
+    code_map = {
+        status.HTTP_400_BAD_REQUEST: "BAD_REQUEST",
+        status.HTTP_404_NOT_FOUND: "NOT_FOUND",
+        status.HTTP_409_CONFLICT: "CONFLICT",
+        status.HTTP_503_SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
+        status.HTTP_422_UNPROCESSABLE_ENTITY: "VALIDATION_ERROR",
+    }
+    error_code = code_map.get(exc.status_code, "INTERNAL_ERROR")
+    
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": error_code,
+                "message": exc.detail,
+                "status": exc.status_code,
+                # 'details' are not included for standard HTTPExceptions unless specifically added
+            }
+        },
+    )
+
+# ======================================================================================
 #                               Pydantic Models
 # ======================================================================================
 class SpawnResponse(BaseModel):
