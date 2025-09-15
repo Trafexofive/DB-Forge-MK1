@@ -132,5 +132,9 @@ else
     exit 1
 fi
 
+# --- 5. Test Structured Error Responses ---
+echo "5. Testing structured error responses..."
+# Test 404 Not Found (for a data plane endpoint)\necho \"   a) Testing 404 Not Found (data plane)...\"\nRESPONSE=$(curl -s -w \"%{http_code}\" -H \"Host: $HOST_HEADER\" -H \"Content-Type: application/json\" -d '{\"sql\":\"SELECT 1\"}' \"$BASE_URL/api/db/non_existent_db_12345/query\")\nHTTP_CODE=\"${RESPONSE: -3}\"\nERROR_BODY=\"${RESPONSE%???}\" # Remove last 3 characters (HTTP code)\nif [ \"$HTTP_CODE\" == \"404\" ] && echo \"$ERROR_BODY\" | grep -q \"\\\"error\\\":{\" && echo \"$ERROR_BODY\" | grep -q \"\\\"code\\\":\\\"NOT_FOUND\\\"\"; then\n    echo \"      ✅ 404 error correctly formatted.\"\nelse\n    echo \"      ❌ 404 error format is incorrect.\"\n    echo \"      HTTP Code: $HTTP_CODE\"\n    echo \"      Response Body: $ERROR_BODY\"\n    exit 1\nfi\n\n# Test 400 Bad Request (SQL Error)\necho \"   b) Testing 400 Bad Request (SQL Error)...\"\n# First, spawn a DB to test against\ncurl -s -X POST -H \"Host: $HOST_HEADER\" \"$BASE_URL/admin/databases/spawn/test_error_db\" > /dev/null\n# Execute a bad SQL query\nRESPONSE=$(curl -s -w \"%{http_code}\" -H \"Host: $HOST_HEADER\" -H \"Content-Type: application/json\" -d '{\"sql\":\"INVALID SQL STATEMENT\"}' \"$BASE_URL/api/db/test_error_db/query\")\nHTTP_CODE=\"${RESPONSE: -3}\"\nERROR_BODY=\"${RESPONSE%???}\"\n# Prune the test DB\ncurl -s -X POST -H \"Host: $HOST_HEADER\" \"$BASE_URL/admin/databases/prune/test_error_db\" > /dev/null\n\nif [ \"$HTTP_CODE\" == \"400\" ] && echo \"$ERROR_BODY\" | grep -q \"\\\"error\\\":{\" && echo \"$ERROR_BODY\" | grep -q \"\\\"code\\\":\\\"BAD_REQUEST\\\"\"; then\n    echo \"      ✅ 400 error (SQL) correctly formatted.\"\nelse\n    echo \"      ❌ 400 error (SQL) format is incorrect.\"\n    echo \"      HTTP Code: $HTTP_CODE\"\n    echo \"      Response Body: $ERROR_BODY\"\n    exit 1\nfi
+
 echo "=== All tests passed! ==="
 exit 0
