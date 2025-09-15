@@ -4,6 +4,22 @@ This document defines the RESTful API contract for interacting with the DB-Forge
 
 **Base URL:** `http://db.localhost` (or as defined in `.env`)
 
+## Error Responses
+
+All error responses from the API follow a standardized JSON format:
+
+```json
+{
+  "error": {
+    "code": "MACHINE_READABLE_CODE",
+    "message": "Human readable description of the error.",
+    "status": 404 // The corresponding HTTP status code
+  }
+}
+```
+
+Specific error examples are provided in the endpoint sections below.
+
 ---
 
 ## 1. Admin API (Orchestrator)
@@ -12,7 +28,7 @@ These endpoints are for managing the lifecycle of database instances.
 
 ### `POST /admin/databases/spawn/{db_name}`
 
-Spawns a new, isolated database instance. This action is idempotent; if an instance already exists, it will ensure it is running.
+Spawns a new, isolated SQLite database instance. This action is idempotent; if an instance already exists, it will ensure it is running. The database data is stored in a file on the host filesystem (`./db-data/{db_name}.db`), ensuring persistence and data sovereignty. A lightweight Docker container (`db-worker`) is created to hold this database file.
 
 -   **URL Params:**
     -   `db_name` (string, required): A unique name for the database (e.g., `agent-alpha-memory`). Must be filesystem and Docker-name friendly.
@@ -25,6 +41,15 @@ Spawns a new, isolated database instance. This action is idempotent; if an insta
     }
     ```
 -   **Error Response (400 Bad Request):** If `db_name` is invalid.
+    ```json
+    {
+      "error": {
+        "code": "BAD_REQUEST",
+        "message": "Invalid database name.",
+        "status": 400
+      }
+    }
+    ```
 
 ### `POST /admin/databases/prune/{db_name}`
 
@@ -40,6 +65,15 @@ Stops and removes a specific database instance container. **Note: This does not 
     }
     ```
 -   **Error Response (404 Not Found):** If no database instance with that name is found.
+    ```json
+    {
+      "error": {
+        "code": "NOT_FOUND",
+        "message": "Database instance not found.",
+        "status": 404
+      }
+    }
+    ```
 
 ### `GET /admin/databases`
 
@@ -64,7 +98,7 @@ These endpoints are for interacting with the data inside a specific database.
 
 ### `POST /api/db/{db_name}/query`
 
-Executes a raw SQL query. This is the most flexible and powerful endpoint, designed for agent use.
+Executes a raw SQL query against the specified database. This is the most flexible and powerful endpoint, designed for direct data manipulation and retrieval. It supports parameterized queries for safety. The `sql` field can contain any valid SQLite statement (SELECT, INSERT, UPDATE, DELETE, CREATE, etc.).
 
 -   **Request Body:**
     ```json
@@ -91,7 +125,25 @@ Executes a raw SQL query. This is the most flexible and powerful endpoint, desig
         }
         ```
 -   **Error Response (400 Bad Request):** For invalid SQL syntax.
+    ```json
+    {
+      "error": {
+        "code": "BAD_REQUEST",
+        "message": "SQL Error: ...",
+        "status": 400
+      }
+    }
+    ```
 -   **Error Response (404 Not Found):** If `db_name` does not exist.
+    ```json
+    {
+      "error": {
+        "code": "NOT_FOUND",
+        "message": "Database not found.",
+        "status": 404
+      }
+    }
+    ```
 
 ### `POST /api/db/{db_name}/tables`
 
