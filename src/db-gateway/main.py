@@ -3,6 +3,7 @@ import re
 import docker
 import aiosqlite
 from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.middleware.cors import CORSMiddleware # Import for CORS
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
@@ -28,6 +29,17 @@ app = FastAPI(
     title="Praetorian DB-Forge",
     description="A containerized, RESTful database-as-a-service gateway.",
     version="1.0.0"
+)
+
+# Configure CORS for frontend integration (Development settings)
+# IMPORTANT: Review and tighten these settings for production.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # Permissive for development. Use specific origins in production.
+    allow_credentials=True,
+    allow_methods=["*"], # Allow all HTTP methods (GET, POST, OPTIONS, etc.)
+    allow_headers=["*"], # Allow all headers
+    # expose_headers=["Access-Control-Allow-Origin"] # Optional: Expose specific headers to the browser
 )
 
 # ======================================================================================
