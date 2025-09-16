@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Praetorian DB-Forge</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <style>
+        body {
+            padding-top: 20px;
+            background-color: #f8f9fa;
+        }
+        .header {
+            background-color: #343a40;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .section {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .btn-custom {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+        .btn-custom:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .loading {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="text-center">Praetorian DB-Forge</h1>
+            <p class="text-center">A lightweight Database-as-a-Service platform</p>
+        </div>
+
+        <!-- API Key Section -->
+        <div class="section">
+            <h2>Authentication</h2>
+            <div class="mb-3">
+                <label for="apiKey" class="form-label">API Key</label>
+                <input type="password" class="form-control" id="apiKey" placeholder="Enter your API key">
+                <div class="form-text">Your API key is required to perform administrative actions.</div>
+            </div>
+            <button id="saveApiKey" class="btn btn-primary">Save API Key</button>
+            <button id="clearApiKey" class="btn btn-secondary">Clear API Key</button>
+            <div id="authStatus" class="mt-2"></div>
+        </div>
+
+        <!-- Database Management Section -->
+        <div class="section">
+            <h2>Database Management</h2>
+            <div class="row">
+                <div class="col-md-6">
+                    <h3>Spawn Database</h3>
+                    <div class="mb-3">
+                        <label for="newDbName" class="form-label">Database Name</label>
+                        <input type="text" class="form-control" id="newDbName" placeholder="e.g., my_new_db">
+                    </div>
+                    <button id="spawnDb" class="btn btn-custom">Spawn Database</button>
+                </div>
+                <div class="col-md-6">
+                    <h3>Prune Database</h3>
+                    <div class="mb-3">
+                        <label for="pruneDbName" class="form-label">Database Name</label>
+                        <input type="text" class="form-control" id="pruneDbName" placeholder="e.g., my_old_db">
+                    </div>
+                    <button id="pruneDb" class="btn btn-danger">Prune Database</button>
+                </div>
+            </div>
+            <div id="dbManagementStatus" class="mt-3"></div>
+        </div>
+
+        <!-- List Databases Section -->
+        <div class="section">
+            <h2>Active Databases</h2>
+            <button id="listDbs" class="btn btn-info">Refresh List</button>
+            <div id="dbList" class="mt-3">
+                <p>No databases listed yet. Click "Refresh List" to load.</p>
+            </div>
+        </div>
+
+        <!-- Service Stats Section -->
+        <div class="section">
+            <h2>Service Stats</h2>
+            <button id="getGatewayStats" class="btn btn-info">Refresh Gateway Stats</button>
+            <div id="gatewayStats" class="mt-3">
+                <p>Click "Refresh Gateway Stats" to load.</p>
+            </div>
+        </div>
+
+        <!-- Service Discovery Section -->
+        <div class="section">
+            <h2>Service Discovery</h2>
+            <button id="discoverDbs" class="btn btn-info">Discover Databases</button>
+            <div id="discoveryList" class="mt-3">
+                <p>Click "Discover Databases" to find available instances.</p>
+            </div>
+        </div>
+
+        <!-- Data Operations Section -->
+        <div class="section">
+            <h2>Data Operations</h2>
+            <div class="row">
+                <div class="col-md-6">
+                    <h3>Create Table</h3>
+                    <div class="mb-3">
+                        <label for="dbForTable" class="form-label">Database Name</label>
+                        <input type="text" class="form-control" id="dbForTable" placeholder="e.g., my_db">
+                    </div>
+                    <div class="mb-3">
+                        <label for="tableName" class="form-label">Table Name</label>
+                        <input type="text" class="form-control" id="tableName" placeholder="e.g., users">
+                    </div>
+                    <div class="mb-3">
+                        <label for="tableColumns" class="form-label">Columns (JSON)</label>
+                        <textarea class="form-control" id="tableColumns" rows="4" placeholder='[{"name": "id", "type": "INTEGER", "primary_key": true}, {"name": "name", "type": "TEXT", "not_null": true}]'></textarea>
+                    </div>
+                    <button id="createTable" class="btn btn-custom">Create Table</button>
+                </div>
+                <div class="col-md-6">
+                    <h3>Insert Data</h3>
+                    <div class="mb-3">
+                        <label for="dbForInsert" class="form-label">Database Name</label>
+                        <input type="text" class="form-control" id="dbForInsert" placeholder="e.g., my_db">
+                    </div>
+                    <div class="mb-3">
+                        <label for="tableForInsert" class="form-label">Table Name</label>
+                        <input type="text" class="form-control" id="tableForInsert" placeholder="e.g., users">
+                    </div>
+                    <div class="mb-3">
+                        <label for="insertData" class="form-label">Data (JSON)</label>
+                        <textarea class="form-control" id="insertData" rows="4" placeholder='[{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]'></textarea>
+                    </div>
+                    <button id="insertDataBtn" class="btn btn-custom">Insert Data</button>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-md-12">
+                    <h3>Query Data</h3>
+                    <div class="mb-3">
+                        <label for="dbForQuery" class="form-label">Database Name</label>
+                        <input type="text" class="form-control" id="dbForQuery" placeholder="e.g., my_db">
+                    </div>
+                    <div class="mb-3">
+                        <label for="tableForQuery" class="form-label">Table Name</label>
+                        <input type="text" class="form-control" id="tableForQuery" placeholder="e.g., users">
+                    </div>
+                    <div class="mb-3">
+                        <label for="queryParams" class="form-label">Query Parameters (key=value pairs, one per line)</label>
+                        <textarea class="form-control" id="queryParams" rows="2" placeholder="age=30&#10;status=active"></textarea>
+                    </div>
+                    <button id="queryData" class="btn btn-info">Query Data</button>
+                    <div id="queryResult" class="mt-3">
+                        <p>Query results will appear here.</p>
+                    </div>
+                </div>
+            </div>
+            <div id="dataOpStatus" class="mt-3"></div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="loading text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="app.js"></script>
+</body>
+</html>

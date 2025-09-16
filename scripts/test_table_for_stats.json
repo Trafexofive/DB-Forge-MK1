@@ -1,0 +1,19 @@
+{
+  "table_name": "users",
+  "columns": [
+    {
+      "name": "id",
+      "type": "INTEGER",
+      "primary_key": true
+    },
+    {
+      "name": "name",
+      "type": "TEXT",
+      "not_null": true
+    },
+    {
+      "name": "age",
+      "type": "INTEGER"
+    }
+  ]
+}
