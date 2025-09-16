@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "name": "Alice Johnson",
+      "age": 30,
+      "email": "alice@example.com"
+    },
+    {
+      "name": "Bob Smith",
+      "age": 25,
+      "email": "bob@example.com"
+    },
+    {
+      "name": "Charlie Brown",
+      "age": 35,
+      "email": "charlie@example.com"
+    }
+  ]
+}

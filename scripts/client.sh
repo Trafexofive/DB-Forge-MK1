@@ -2,7 +2,8 @@
 
 # client.sh: Simplified CLI for Praetorian DB-Forge API interactions
 
-BASE_URL="http://db.localhost" # Exposed via Traefik
+BASE_URL="http://db.localhost:8081" # Updated to match Traefik's mapped port
+API_KEY="${DB_FORGE_API_KEY:-}"   # Default to environment variable, if set
 
 # --- Helper Function for API Calls ---
 _call_api() {
@@ -11,7 +12,12 @@ _call_api() {
     local JSON_PAYLOAD_FILE=$3
 
     local URL="${BASE_URL}${ENDPOINT}"
-    local CURL_CMD="curl -s -X $METHOD"
+    local CURL_CMD="curl -s -X $METHOD -H \"Host: db.localhost\""
+
+    # Add API Key header if API_KEY is set
+    if [ -n "$API_KEY" ]; then
+        CURL_CMD+=" -H \"X-API-Key: $API_KEY\""
+    fi
 
     if [ -n "$JSON_PAYLOAD_FILE" ]; then
         if [ ! -f "$JSON_PAYLOAD_FILE" ]; then
@@ -26,6 +32,24 @@ _call_api() {
 }
 
 # --- User-Friendly Commands ---
+
+# Utility command to test if the API key is valid
+test_auth() {
+    if [ -z "$API_KEY" ]; then
+        echo "Error: API key not set. Please set DB_FORGE_API_KEY environment variable or use --api-key option." >&2
+        return 1
+    fi
+    echo "Testing authentication with provided API key..."
+    local response=$(_call_api "GET" "/admin/databases")
+    if echo "$response" | grep -q '"error"'; then
+        echo "Authentication failed."
+        echo "$response"
+        return 1
+    else
+        echo "Authentication successful!"
+        echo "$response" | jq . || echo "$response" # Pretty print JSON if jq is available
+    fi
+}
 
 # Admin API
 spawn_db() {
@@ -108,23 +132,53 @@ raw_query() {
 }
 
 # --- Main execution ---
-case "$1" in
-    spawn_db|prune_db|list_dbs|get_root|create_table|insert_rows|get_rows|raw_query)
-        "$@"
+# Parse command-line options for API key
+TEMP=$(getopt -o k: --long api-key: -n 'client.sh' -- "$@")
+if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
+eval set -- "$TEMP"
+
+while true ; do
+    case "$1" in
+        -k|--api-key)
+            API_KEY="$2"
+            shift 2
+            ;;
+        --) shift ; break ;;
+        *) echo "Internal error!" ; exit 1 ;;
+    esac
+done
+
+# If no command is given, show usage
+if [ $# -lt 1 ]; then
+    echo "Usage: client.sh [options] <command> [arguments]"
+    echo "Options:"
+    echo "  -k, --api-key <key>  Specify the API key to use for authentication"
+    echo "                       Can also be set via DB_FORGE_API_KEY environment variable"
+    echo "Commands:"
+    echo "  Utility:"
+    echo "    test_auth             Test if the provided API key is valid"
+    echo "  Admin API:"
+    echo "    spawn_db <db_name>"
+    echo "    prune_db <db_name>"
+    echo "    list_dbs"
+    echo "    get_root"
+    echo "  Data Plane API:"
+    echo "    create_table <db_name> <table_name> <columns_json_file>"
+    echo "    insert_rows <db_name> <table_name> <rows_json_file>"
+    echo "    get_rows <db_name> <table_name> [query_params]"
+    echo "    raw_query <db_name> <query_json_file>"
+    exit 1
+fi
+
+COMMAND=$1
+shift
+
+case "$COMMAND" in
+    test_auth|spawn_db|prune_db|list_dbs|get_root|create_table|insert_rows|get_rows|raw_query)
+        "$COMMAND" "$@"
         ;;
     *)
-        echo "Usage: client.sh <command> [arguments]"
-        echo "Commands:"
-        echo "  Admin API:"
-        echo "    spawn_db <db_name>"
-        echo "    prune_db <db_name>"
-        echo "    list_dbs"
-        echo "    get_root"
-        echo "  Data Plane API:"
-        echo "    create_table <db_name> <table_name> <columns_json_file>"
-        echo "    insert_rows <db_name> <table_name> <rows_json_file>"
-        echo "    get_rows <db_name> <table_name> [query_params]"
-        echo "    raw_query <db_name> <query_json_file>"
+        echo "Unknown command: $COMMAND" >&2
         exit 1
         ;;
 esac

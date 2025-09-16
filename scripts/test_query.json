@@ -1,0 +1,4 @@
+{
+  "sql": "SELECT name, age FROM users WHERE age >= ?",
+  "params": [30]
+}
