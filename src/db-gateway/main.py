@@ -2,11 +2,15 @@ import os
 import re
 import docker
 import aiosqlite
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, status, Depends, APIRouter
 from fastapi.middleware.cors import CORSMiddleware # Import for CORS
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
+# Import our new auth module
+from auth import load_admin_credentials, first_time_setup_prompt, verify_api_key_header
+
+# ... (rest of the imports and config)
 
 # ======================================================================================
 #                               Configuration
@@ -46,6 +50,13 @@ app = FastAPI(
     },
 )
 
+# Create a dedicated router for admin endpoints, protected by API key auth
+admin_router = APIRouter(
+    prefix="/admin",
+    tags=["admin"],
+    dependencies=[Depends(verify_api_key_header)] # Apply auth dependency to all routes in this router
+)
+
 # Configure CORS for frontend integration (Development settings)
 # IMPORTANT: Review and tighten these settings for production.
 app.add_middleware(
@@ -56,6 +67,9 @@ app.add_middleware(
     allow_headers=["*"], # Allow all headers
     # expose_headers=["Access-Control-Allow-Origin"] # Optional: Expose specific headers to the browser
 )
+
+# Include the admin router with protected endpoints
+app.include_router(admin_router)
 
 # ======================================================================================
 #                               Structured Error Handling
@@ -231,7 +245,7 @@ async def db_file_exists(db_name: str) -> bool:
 # ======================================================================================
 #                               Admin API (Orchestrator)
 # ======================================================================================
-@app.post("/admin/databases/spawn/{db_name}", response_model=SpawnResponse, status_code=status.HTTP_201_CREATED)
+@admin_router.post("/databases/spawn/{db_name}", response_model=SpawnResponse, status_code=status.HTTP_201_CREATED)
 async def spawn_database(db_name: str):
     """
     Spawns a new, isolated database instance.
@@ -293,7 +307,7 @@ async def spawn_database(db_name: str):
             container_id=container.id,
         )
 
-@app.post("/admin/databases/prune/{db_name}", response_model=PruneResponse)
+@admin_router.post("/databases/prune/{db_name}", response_model=PruneResponse)
 async def prune_database(db_name: str):
     """Stops and removes a specific database instance container."""
     if not docker_client:
@@ -308,7 +322,7 @@ async def prune_database(db_name: str):
     except docker.errors.NotFound:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Database instance not found.")
 
-@app.get("/admin/databases", response_model=List[DBInstance])
+@admin_router.get("/databases", response_model=List[DBInstance])
 async def list_databases():
     """Lists all currently managed database instances."""
     if not docker_client:
@@ -459,6 +473,20 @@ async def startup_event():
     # This is just to confirm docker_client is available on startup
     if not docker_client:
         print("WARNING: Docker client is not available. Admin functions will fail.")
+    
+    # Load admin credentials for authentication
+    # If the file doesn't exist, this will print a warning and disable auth.
+    await load_admin_credentials()
+    
+    # If auth is disabled due to missing file, trigger first-time setup prompt
+    # Note: This is a simplified approach. A production system might handle this differently.
+    from auth import ADMIN_API_KEY_HASH # Import to check if loaded
+    if not ADMIN_API_KEY_HASH:
+        print("No admin credentials found. Initiating first-time setup...")
+        await first_time_setup_prompt()
+        print("Setup complete. Please restart the service to load the new credentials.")
+        # Optionally, you could raise an exception to stop the app here
+        # raise RuntimeError("Initial setup required. Please restart after setup.")
 
 @app.get("/", include_in_schema=False)
 def root():
