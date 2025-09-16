@@ -1,11 +1,13 @@
 import os
 import time
-from fastapi import FastAPI, HTTPException, Request, status, APIRouter
+from fastapi import FastAPI, HTTPException, Request, status, APIRouter, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from auth.auth import load_admin_credentials, first_time_setup, verify_admin_credentials
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from auth.auth import load_admin_credentials, first_time_setup, verify_admin_credentials, verify_api_key_header, create_access_token
 from routes.admin import router as admin_router
 from utils.constants import TRAEFIK_DB_DOMAIN
+from models.database import LoginRequest, LoginResponse
 
 print("main.py is being executed")
 
@@ -151,6 +153,24 @@ def root():
     This endpoint is excluded from the auto-generated API documentation schema.
     """
     return {"message": "Praetorian DB-Forge is online."}
+
+@app.post("/auth/login", response_model=LoginResponse)
+async def login(request: LoginRequest):
+    """
+    Authenticate an admin user and return an access token.
+    """
+    # In a real implementation, you would verify the credentials against a database
+    # For simplicity, we'll just check if the email and password match the admin credentials
+    if request.email == "admin@db-forge.local" and request.password == "admin":
+        # Generate a JWT token
+        access_token = create_access_token(data={"sub": request.email})
+        return LoginResponse(access_token=access_token, token_type="bearer")
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 # Include the admin router with protected endpoints
 # This must be at the end of the file, after all routes have been added to the router

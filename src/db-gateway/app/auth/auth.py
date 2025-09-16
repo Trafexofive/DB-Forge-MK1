@@ -6,7 +6,31 @@ from pathlib import Path
 from passlib.context import CryptContext
 from fastapi import HTTPException, status, Request, Depends
 from fastapi.security import APIKeyHeader
+from jose import JWTError, jwt
 import aiosqlite
+
+# --- Configuration ---
+# Path to the file storing admin credentials (outside the container for persistence)
+ADMIN_CREDS_FILE = Path(os.getenv("ADMIN_CREDS_PATH", "./secrets/admin.json"))
+# Name of the HTTP header to expect the API key
+API_KEY_HEADER_NAME = os.getenv("API_KEY_HEADER_NAME", "X-API-Key")
+# JWT configuration
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")  # In production, use a strong secret key
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# --- Password Hashing ---
+# Using argon2 for password hashing (part of passlib[argon2])
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+
+# --- API Key Handling ---
+api_key_header = APIKeyHeader(name=API_KEY_HEADER_NAME, auto_error=False)
+
+# --- In-Memory Storage ---
+# To avoid reading the file on every request, we'll load the hashed key once.
+# This assumes the key doesn't change during the app's lifetime without a restart.
+# For a production system with key rotation, this would need to be more dynamic.
+ADMIN_API_KEY_HASH: str = "" # This will be loaded at startup
 
 # --- Configuration ---
 # Path to the file storing admin credentials (outside the container for persistence)
@@ -39,6 +63,12 @@ def generate_secure_api_key() -> str:
     """Generate a cryptographically secure API key."""
     return secrets.token_urlsafe(32) # Generates a nice, long, random key
 
+def create_access_token(data: dict):
+    """Create a JWT access token."""
+    to_encode = data.copy()
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
 async def load_admin_credentials():
     """
     Load admin credentials from the file.
@@ -66,12 +96,12 @@ async def load_admin_credentials():
         print(f"!!! ERROR !!! Failed to load admin credentials from {ADMIN_CREDS_FILE}: {e}")
         print("                 Authentication will be disabled.")
 
-def save_admin_credentials(email: str, password_hash: str):
+def save_admin_credentials(email: str, api_key_hash: str):
     """Save admin credentials to the file."""
     ADMIN_CREDS_FILE.parent.mkdir(parents=True, exist_ok=True) # Ensure directory exists
     creds = {
         "email": email,
-        "password_hash": password_hash
+        "api_key_hash": api_key_hash
     }
     try:
         with open(ADMIN_CREDS_FILE, 'w') as f:
@@ -97,15 +127,29 @@ async def first_time_setup():
     # In a real scenario, you'd prompt for email and password here.
     # For simplicity, we'll use placeholders.
     admin_email = "admin@db-forge.local" 
-    admin_password = "admin"  # Default password, should be changed by user
     
-    password_hash = pwd_context.hash(admin_password)
+    # Generate a secure API key
+    api_key = generate_secure_api_key()
+    api_key_hash = hash_api_key(api_key)
     
-    save_admin_credentials(admin_email, password_hash)
+    # Save the credentials
+    ADMIN_CREDS_FILE.parent.mkdir(parents=True, exist_ok=True) # Ensure directory exists
+    creds = {
+        "email": admin_email,
+        "api_key_hash": api_key_hash
+    }
+    try:
+        with open(ADMIN_CREDS_FILE, 'w') as f:
+            json.dump(creds, f, indent=4)
+        os.chmod(ADMIN_CREDS_FILE, 0o600) # Set restrictive permissions
+        print(f"Admin credentials saved to {ADMIN_CREDS_FILE}")
+    except IOError as e:
+        print(f"!!! ERROR !!! Failed to save admin credentials to {ADMIN_CREDS_FILE}: {e}")
+        raise # Re-raise to potentially stop the application
     
     print(f"--- INITIAL ADMIN USER CREATED ---")
     print(f"Email: {admin_email}")
-    print(f"Password: {admin_password} (CHANGE THIS IMMEDIATELY)")
+    print(f"API Key: {api_key} (SAVE THIS IN A SECURE LOCATION)")
     print("--- SETUP COMPLETE ---")
 
 async def verify_admin_credentials(email: str, password: str) -> bool:

@@ -3,6 +3,7 @@ from auth.auth import verify_api_key_header
 from providers.database import get_docker_client, get_worker_name, spawn_database_container, get_database_containers
 from services.database import is_valid_db_name
 from models.database import SpawnResponse, PruneResponse, DBInstance
+import docker
 
 router = APIRouter(
     prefix="/admin",
