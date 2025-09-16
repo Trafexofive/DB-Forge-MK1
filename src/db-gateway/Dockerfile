@@ -14,8 +14,7 @@ COPY src/db-gateway/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 # Copy the application's code to the working directory
-COPY src/db-gateway/main.py /app/main.py
-COPY src/db-gateway/auth.py /app/auth.py
+COPY src/db-gateway/app /app
 
 # Command to run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--app-dir", "."]

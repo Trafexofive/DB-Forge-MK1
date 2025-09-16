@@ -4,3 +4,4 @@ docker
 pydantic
 aiosqlite
 passlib[argon2]
+python-jose[cryptography]

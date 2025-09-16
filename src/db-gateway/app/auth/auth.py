@@ -6,6 +6,7 @@ from pathlib import Path
 from passlib.context import CryptContext
 from fastapi import HTTPException, status, Request, Depends
 from fastapi.security import APIKeyHeader
+import aiosqlite
 
 # --- Configuration ---
 # Path to the file storing admin credentials (outside the container for persistence)
@@ -65,12 +66,12 @@ async def load_admin_credentials():
         print(f"!!! ERROR !!! Failed to load admin credentials from {ADMIN_CREDS_FILE}: {e}")
         print("                 Authentication will be disabled.")
 
-def save_admin_credentials(email: str, api_key_hash: str):
+def save_admin_credentials(email: str, password_hash: str):
     """Save admin credentials to the file."""
     ADMIN_CREDS_FILE.parent.mkdir(parents=True, exist_ok=True) # Ensure directory exists
     creds = {
         "email": email,
-        "api_key_hash": api_key_hash
+        "password_hash": password_hash
     }
     try:
         with open(ADMIN_CREDS_FILE, 'w') as f:
@@ -81,32 +82,53 @@ def save_admin_credentials(email: str, api_key_hash: str):
         print(f"!!! ERROR !!! Failed to save admin credentials to {ADMIN_CREDS_FILE}: {e}")
         raise # Re-raise to potentially stop the application
 
-async def first_time_setup_prompt():
+async def first_time_setup():
     """
-    (Simulated) First-time setup. In a real scenario, this would likely involve
-    a separate setup script or an interactive prompt. For this implementation,
-    we'll generate a key and print it, assuming the user will save it.
+    First-time setup for the admin user.
     """
     print("--- FIRST TIME ADMIN SETUP ---")
+    if ADMIN_CREDS_FILE.exists():
+        print("Admin credentials already exist. Skipping setup.")
+        return
+    
     print("No existing admin credentials found.")
-    print("Generating a new API key...")
+    print("Creating initial admin user...")
     
-    # In a real scenario, you'd prompt for email here.
-    # For simplicity, we'll use a placeholder.
+    # In a real scenario, you'd prompt for email and password here.
+    # For simplicity, we'll use placeholders.
     admin_email = "admin@db-forge.local" 
-    new_api_key = generate_secure_api_key()
-    new_api_key_hash = hash_api_key(new_api_key)
+    admin_password = "admin"  # Default password, should be changed by user
     
-    save_admin_credentials(admin_email, new_api_key_hash)
+    password_hash = pwd_context.hash(admin_password)
     
-    print(f"--- SAVE THIS API KEY IN A SECURE LOCATION ---")
-    print(f"Your API Key is: {new_api_key}")
-    print(f"Provide this key in the '{API_KEY_HEADER_NAME}' header for all requests.")
-    print(f"Example: curl -H '{API_KEY_HEADER_NAME}: {new_api_key}' ...")
+    save_admin_credentials(admin_email, password_hash)
+    
+    print(f"--- INITIAL ADMIN USER CREATED ---")
+    print(f"Email: {admin_email}")
+    print(f"Password: {admin_password} (CHANGE THIS IMMEDIATELY)")
     print("--- SETUP COMPLETE ---")
-    print("Restart the service to load the new credentials.")
-    # Note: The app will need to be restarted to load the new key from the file.
-    # A more sophisticated system might reload the key or use a signal.
+
+async def verify_admin_credentials(email: str, password: str) -> bool:
+    """
+    Verify admin credentials.
+    """
+    if not ADMIN_CREDS_FILE.exists():
+        return False
+    
+    try:
+        with open(ADMIN_CREDS_FILE, 'r') as f:
+            data = json.load(f)
+        
+        if "email" not in data or "password_hash" not in data:
+            return False
+            
+        if data["email"] != email:
+            return False
+            
+        return pwd_context.verify(password, data["password_hash"])
+    except (json.JSONDecodeError, KeyError, IOError) as e:
+        print(f"!!! ERROR !!! Failed to verify admin credentials: {e}")
+        return False
 
 async def verify_api_key_header(api_key_header: str = Depends(api_key_header)):
     """
