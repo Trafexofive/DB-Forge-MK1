@@ -5,9 +5,12 @@ const BASE_URL = 'http://db.localhost:8081'; // This should match your Traefik s
 const HOST_HEADER = 'db.localhost';
 
 // DOM Elements
-const apiKeyInput = document.getElementById('apiKey');
-const saveApiKeyBtn = document.getElementById('saveApiKey');
-const clearApiKeyBtn = document.getElementById('clearApiKey'); // New button
+const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
+const loginBtn = document.getElementById('login');
+const logoutBtn = document.getElementById('logout');
+const authSection = document.getElementById('authSection');
+const mainContent = document.getElementById('mainContent');
 const authStatus = document.getElementById('authStatus');
 
 const newDbNameInput = document.getElementById('newDbName');
@@ -47,7 +50,8 @@ const dataOpStatus = document.getElementById('dataOpStatus');
 const loadingIndicator = document.getElementById('loading');
 
 // State
-let apiKey = '';
+let authToken = '';
+let isLoggedIn = false;
 
 // Utility function to show/hide loading indicator
 function showLoading() {
@@ -60,7 +64,7 @@ function hideLoading() {
 
 // Utility function to display status messages
 function showStatus(element, message, isSuccess = true) {
-    element.innerHTML = `<p class=\"${isSuccess ? 'success' : 'error'}\">${message}</p>`;
+    element.innerHTML = `<p class="${isSuccess ? 'success' : 'error'}">${message}</p>`;
     // Clear the message after 5 seconds
     setTimeout(() => {
         element.innerHTML = '';
@@ -76,6 +80,45 @@ async function apiRequest(endpoint, options = {}) {
         ...options.headers
     };
     
+    if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
+    const config = {
+        method: 'GET',
+        headers,
+        ...options
+    };
+    
+    try {
+        showLoading();
+        const response = await fetch(url, config);
+        hideLoading();
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || `HTTP Error: ${response.status}`);
+        }
+        
+        return await response.json();
+    } catch (error) {
+        hideLoading();
+        console.error('API Request failed:', error);
+        throw error;
+    }
+}
+
+// Utility function to make API requests with API Key
+async function apiRequestWithApiKey(endpoint, options = {}) {
+    const url = `${BASE_URL}${endpoint}`;
+    const headers = {
+        'Host': HOST_HEADER,
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    
+    // Get API key from local storage
+    const apiKey = localStorage.getItem('db-forge-api-key');
     if (apiKey) {
         headers['X-API-Key'] = apiKey;
     }
@@ -93,7 +136,7 @@ async function apiRequest(endpoint, options = {}) {
         
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error?.message || `HTTP Error: ${response.status}`);
+            throw new Error(errorData.detail || `HTTP Error: ${response.status}`);
         }
         
         return await response.json();
@@ -104,12 +147,63 @@ async function apiRequest(endpoint, options = {}) {
     }
 }
 
+// Function to login
+async function login() {
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
+    
+    if (!email || !password) {
+        showStatus(authStatus, 'Please enter both email and password.', false);
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: {
+                'Host': HOST_HEADER,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || `HTTP Error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        authToken = data.access_token;
+        isLoggedIn = true;
+        
+        // Hide auth section and show main content
+        authSection.style.display = 'none';
+        mainContent.style.display = 'block';
+        
+        showStatus(authStatus, 'Login successful!', true);
+    } catch (error) {
+        showStatus(authStatus, `Login failed: ${error.message}`, false);
+    }
+}
+
+// Function to logout
+function logout() {
+    authToken = '';
+    isLoggedIn = false;
+    
+    // Show auth section and hide main content
+    authSection.style.display = 'block';
+    mainContent.style.display = 'none';
+    
+    showStatus(authStatus, 'Logged out successfully!', true);
+}
+
 // --- New Functions for Stats and Discovery ---
 
 // Function to fetch and display gateway stats
 async function fetchAndDisplayGatewayStats() {
     try {
-        const stats = await apiRequest('/admin/gateway/stats');
+        const stats = await apiRequestWithApiKey('/admin/gateway/stats');
         let html = `<h3>Gateway Statistics</h3>`;
         html += `<p><strong>Uptime:</strong> ${stats.uptime_seconds.toFixed(2)} seconds</p>`;
         html += `<p><strong>Total Requests:</strong> ${stats.total_requests}</p>`;
@@ -138,7 +232,7 @@ async function fetchAndDisplayGatewayStats() {
 // Function to fetch and display discovered databases
 async function fetchAndDisplayDiscovery() {
     try {
-        const databases = await apiRequest('/admin/discovery');
+        const databases = await apiRequestWithApiKey('/admin/discovery');
         if (databases.length === 0) {
             discoveryListDiv.innerHTML = '<p>No database instances discovered.</p>';
         } else {
@@ -158,50 +252,6 @@ async function fetchAndDisplayDiscovery() {
     }
 }
 
-// --- End of New Functions ---
-
-// Function to save API key to local storage
-function saveApiKey() {
-    apiKey = apiKeyInput.value.trim();
-    if (apiKey) {
-        localStorage.setItem('db-forge-api-key', apiKey);
-        showStatus(authStatus, 'API key saved successfully!', true);
-        // Clear the input for security
-        apiKeyInput.value = '';
-    } else {
-        showStatus(authStatus, 'Please enter a valid API key.', false);
-    }
-}
-
-// Function to load API key from local storage
-function loadApiKey() {
-    const savedApiKey = localStorage.getItem('db-forge-api-key');
-    if (savedApiKey) {
-        apiKey = savedApiKey;
-        showStatus(authStatus, 'API key loaded from local storage!', true);
-    }
-}
-
-// Function to clear saved API key
-function clearApiKey() {
-    localStorage.removeItem('db-forge-api-key');
-    apiKey = '';
-    showStatus(authStatus, 'API key cleared from local storage!', true);
-}
-
-// Event listener for saving API key
-saveApiKeyBtn.addEventListener('click', saveApiKey);
-
-// Event listener for clearing API key
-clearApiKeyBtn.addEventListener('click', clearApiKey);
-
-// Load API key when the page loads
-document.addEventListener('DOMContentLoaded', () => {
-    loadApiKey();
-    console.log('DB-Forge Frontend Initialized');
-    // You could load any initial data here if needed
-});
-
 // Database Management
 spawnDbBtn.addEventListener('click', async () => {
     const dbName = newDbNameInput.value.trim();
@@ -211,7 +261,7 @@ spawnDbBtn.addEventListener('click', async () => {
     }
     
     try {
-        const data = await apiRequest(`/admin/databases/spawn/${dbName}`, {
+        const data = await apiRequestWithApiKey(`/admin/databases/spawn/${dbName}`, {
             method: 'POST'
         });
         showStatus(dbManagementStatus, `Database '${dbName}' spawned successfully!`, true);
@@ -229,7 +279,7 @@ pruneDbBtn.addEventListener('click', async () => {
     }
     
     try {
-        const data = await apiRequest(`/admin/databases/prune/${dbName}`, {
+        const data = await apiRequestWithApiKey(`/admin/databases/prune/${dbName}`, {
             method: 'POST'
         });
         showStatus(dbManagementStatus, `Database '${dbName}' pruned successfully!`, true);
@@ -241,13 +291,13 @@ pruneDbBtn.addEventListener('click', async () => {
 
 listDbsBtn.addEventListener('click', async () => {
     try {
-        const databases = await apiRequest('/admin/databases');
+        const databases = await apiRequestWithApiKey('/admin/databases');
         if (databases.length === 0) {
             dbList.innerHTML = '<p>No active databases found.</p>';
         } else {
-            let html = '<ul class=\"list-group\">';
+            let html = '<ul class="list-group">';
             databases.forEach(db => {
-                html += `<li class=\"list-group-item\">
+                html += `<li class="list-group-item">
                     <strong>${db.name}</strong> - 
                     Container ID: ${db.container_id} - 
                     Status: ${db.status}
@@ -257,7 +307,7 @@ listDbsBtn.addEventListener('click', async () => {
             dbList.innerHTML = html;
         }
     } catch (error) {
-        dbList.innerHTML = `<p class=\"error\">Failed to list databases: ${error.message}</p>`;
+        dbList.innerHTML = `<p class="error">Failed to list databases: ${error.message}</p>`;
     }
 });
 
@@ -274,7 +324,7 @@ createTableBtn.addEventListener('click', async () => {
     
     try {
         const columns = JSON.parse(columnsJson);
-        const data = await apiRequest(`/api/db/${dbName}/tables`, {
+        const data = await apiRequestWithApiKey(`/api/db/${dbName}/tables`, {
             method: 'POST',
             body: JSON.stringify({
                 table_name: tableName,
@@ -307,7 +357,7 @@ insertDataBtn.addEventListener('click', async () => {
     
     try {
         const rows = JSON.parse(dataJson);
-        const data = await apiRequest(`/api/db/${dbName}/tables/${tableName}/rows`, {
+        const data = await apiRequestWithApiKey(`/api/db/${dbName}/tables/${tableName}/rows`, {
             method: 'POST',
             body: JSON.stringify({
                 rows: rows
@@ -352,11 +402,11 @@ queryDataBtn.addEventListener('click', async () => {
     }
     
     try {
-        const data = await apiRequest(url);
+        const data = await apiRequestWithApiKey(url);
         if (data.data && data.data.length > 0) {
             // Create a simple table to display the results
             let html = `<p><strong>Query returned ${data.rows_affected} rows:</strong></p>`;
-            html += '<div class=\"table-responsive\"><table class=\"table table-striped table-bordered\">';
+            html += '<div class="table-responsive"><table class="table table-striped table-bordered">';
             
             // Table header
             html += '<thead><tr>';
@@ -382,15 +432,29 @@ queryDataBtn.addEventListener('click', async () => {
             queryResult.innerHTML = '<p>No data returned from query.</p>';
         }
     } catch (error) {
-        queryResult.innerHTML = `<p class=\"error\">Failed to query data: ${error.message}</p>`;
+        queryResult.innerHTML = `<p class="error">Failed to query data: ${error.message}</p>`;
     }
 });
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DB-Forge Frontend Initialized');
-    // You could load any initial data here if needed
-});// --- New Event Listeners for Stats and Discovery ---
+    
+    // Check if user is already logged in
+    const token = localStorage.getItem('db-forge-auth-token');
+    if (token) {
+        authToken = token;
+        isLoggedIn = true;
+        authSection.style.display = 'none';
+        mainContent.style.display = 'block';
+    }
+});
+
+// Event Listeners
+loginBtn.addEventListener('click', login);
+logoutBtn.addEventListener('click', logout);
+
+// --- New Event Listeners for Stats and Discovery ---
 
 getGatewayStatsBtn.addEventListener('click', fetchAndDisplayGatewayStats);
 

@@ -2,8 +2,17 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from auth.auth import verify_api_key_header
 from providers.database import get_docker_client, get_worker_name, spawn_database_container, get_database_containers
 from services.database import is_valid_db_name
-from models.database import SpawnResponse, PruneResponse, DBInstance
+from models.database import SpawnResponse, PruneResponse, DBInstance, GatewayStats, DiscoveryInfo
 import docker
+import time
+import os
+
+# Global counters for stats (these should be moved to a proper stats module)
+START_TIME = time.time()
+TOTAL_REQUESTS = 0
+TOTAL_ERRORS = 0
+REQUESTS_BY_ENDPOINT = {}
+ERRORS_BY_TYPE = {}
 
 router = APIRouter(
     prefix="/admin",
@@ -82,4 +91,41 @@ async def list_databases():
     for c in containers:
         db_name = c.labels.get("db-name", "unknown")
         instances.append(DBInstance(name=db_name, container_id=c.id, status=c.status))
+    return instances
+
+@router.get("/gateway/stats", response_model=GatewayStats, tags=["admin"])
+async def get_gateway_stats():
+    """
+    Retrieve statistics for the DB-Gateway service itself.
+    
+    Returns aggregated metrics about the gateway's operation, including uptime,
+    request volume, and error rates. Useful for monitoring the health of the
+    DB-Forge hub.
+    """
+    uptime = time.time() - START_TIME
+    
+    return GatewayStats(
+        uptime_seconds=uptime,
+        total_requests=TOTAL_REQUESTS,
+        total_errors=TOTAL_ERRORS,
+        requests_by_endpoint=REQUESTS_BY_ENDPOINT,
+        errors_by_type=ERRORS_BY_TYPE
+    )
+
+@router.get("/discovery", response_model=list[DiscoveryInfo], tags=["admin"])
+async def discover_databases():
+    """
+    Service discovery endpoint for database instances.
+    
+    Lists all currently managed database instances along with their basic status.
+    This provides a structured way for agents or other services to programmatically
+    discover and connect to available databases.
+    """
+    docker_client = get_docker_client()
+    instances = []
+    containers = get_database_containers(docker_client)
+    
+    for c in containers:
+        db_name = c.labels.get("db-name", "unknown")
+        instances.append(DiscoveryInfo(db_name=db_name, status=c.status))
     return instances

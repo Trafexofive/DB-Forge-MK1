@@ -65,37 +65,6 @@ class GatewayStats(BaseModel):
     )
     # Add more stats as needed, e.g., Docker API call stats, auth stats
 
-class DatabaseInstanceStats(BaseModel):
-    """
-    Statistics for a specific database instance (Docker container).
-    """
-    db_name: str = Field(
-        ..., 
-        example="agent_memory_db",
-        description="The name of the database instance."
-    )
-    container_status: str = Field(
-        ..., 
-        example="running",
-        description="Current status of the Docker container (e.g., running, exited)."
-    )
-    container_uptime_seconds: Optional[float] = Field(
-        None, 
-        example=3600.0,
-        description="Uptime of the container in seconds (if running)."
-    )
-    # last_activity_timestamp: Optional[datetime] = Field(
-    #     None, 
-    #     example=datetime.utcnow(),
-    #     description="Approximate timestamp of the last API call to this database."
-    # )
-    database_file_size_bytes: Optional[int] = Field(
-        None, 
-        example=102400,
-        description="Size of the database file on disk in bytes."
-    )
-    # Add more stats as needed, e.g., container resource usage if available
-
 class DiscoveryInfo(BaseModel):
     """
     Structured discovery information for a database instance.
