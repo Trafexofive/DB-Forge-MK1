@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 # Import our new auth module
 from auth import load_admin_credentials, first_time_setup_prompt, verify_api_key_header
+# Import our new models
+# from main import GatewayStats, DatabaseInstanceStats, DiscoveryInfo
 
 print("main.py is being executed")
 
@@ -28,6 +30,81 @@ except docker.errors.DockerException:
     print("Error: Could not connect to Docker daemon. Is it running?")
     docker_client = None
 
+# ======================================================================================
+#                               Stats Tracking
+# ======================================================================================
+import time
+START_TIME = time.time()
+
+# Global counters for stats
+TOTAL_REQUESTS = 0
+TOTAL_ERRORS = 0
+REQUESTS_BY_ENDPOINT = {} # e.g., {"/admin/databases/spawn/{db_name}": count}
+ERRORS_BY_TYPE = {}       # e.g., {"401": count, "500": count}
+
+# --- Stats Tracking Helpers ---
+def increment_request_count(endpoint_pattern: str):
+    """Increment the total request count and the count for a specific endpoint pattern."""
+    global TOTAL_REQUESTS, REQUESTS_BY_ENDPOINT
+    TOTAL_REQUESTS += 1
+    REQUESTS_BY_ENDPOINT[endpoint_pattern] = REQUESTS_BY_ENDPOINT.get(endpoint_pattern, 0) + 1
+
+def increment_error_count(status_code: int):
+    """Increment the total error count and the count for a specific error type."""
+    global TOTAL_ERRORS, ERRORS_BY_TYPE
+    TOTAL_ERRORS += 1
+    error_key = str(status_code)
+    ERRORS_BY_TYPE[error_key] = ERRORS_BY_TYPE.get(error_key, 0) + 1
+
+# # Middleware to track requests and errors
+# @app.middleware("http")
+# async def stats_middleware(request: Request, call_next):
+#     """
+#     Middleware to track API requests and responses for stats.
+#     """
+#     # Determine a general endpoint pattern for grouping (to avoid cardinality explosion)
+#     # This is a simplified approach. A more robust solution might use route.name or regex matching.
+#     path = request.url.path
+#     method = request.method
+#     endpoint_pattern = f"{method} {path}"
+    
+#     # Simplify common patterns
+#     if path.startswith("/admin/databases/spawn/") and "{db_name}" not in path:
+#         endpoint_pattern = f"{method} /admin/databases/spawn/{{db_name}}"
+#     elif path.startswith("/admin/databases/prune/") and "{db_name}" not in path:
+#         endpoint_pattern = f"{method} /admin/databases/prune/{{db_name}}"
+#     elif path.startswith("/api/db/") and "/query" in path and "{db_name}" not in path:
+#         # This is tricky because the path is like /api/db/mydb/query
+#         # We want to match /api/db/{db_name}/query
+#         parts = path.split('/')
+#         if len(parts) >= 5 and parts[1] == "api" and parts[2] == "db" and parts[4] == "query":
+#              endpoint_pattern = f"{method} /api/db/{{db_name}}/query"
+#     elif path.startswith("/api/db/") and "/tables/" in path and "/rows" in path and "{db_name}" not in path and "{table_name}" not in path:
+#         # Similar simplification for /api/db/{db_name}/tables/{table_name}/rows
+#         parts = path.split('/')
+#         if len(parts) >= 7 and parts[1] == "api" and parts[2] == "db" and parts[4] == "tables" and parts[6] == "rows":
+#              endpoint_pattern = f"{method} /api/db/{{db_name}}/tables/{{table_name}}/rows"
+#     elif path.startswith("/api/db/") and "/tables" in path and "{db_name}" not in path:
+#         # Simplification for /api/db/{db_name}/tables
+#         parts = path.split('/')
+#         if len(parts) >= 5 and parts[1] == "api" and parts[2] == "db" and parts[4] == "tables":
+#              endpoint_pattern = f"{method} /api/db/{{db_name}}/tables"
+
+#     increment_request_count(endpoint_pattern)
+    
+#     try:
+#         response = await call_next(request)
+#         if response.status_code >= 400:
+#             increment_error_count(response.status_code)
+#         return response
+#     except Exception as e:
+#         # Catch unhandled exceptions and count them as 500 errors
+#         increment_error_count(500)
+#         raise e # Re-raise the exception for FastAPI's default error handling
+
+# ======================================================================================
+#                               FastAPI App Initialization
+# ======================================================================================
 # Initialize FastAPI app
 app = FastAPI(
     title="Praetorian DB-Forge",
@@ -49,6 +126,52 @@ app = FastAPI(
         "url": "https://github.com/Praetorian-DB-Forge/LICENSE", # Placeholder URL
     },
 )
+
+# Middleware to track requests and errors
+@app.middleware("http")
+async def stats_middleware(request: Request, call_next):
+    """
+    Middleware to track API requests and responses for stats.
+    """
+    # Determine a general endpoint pattern for grouping (to avoid cardinality explosion)
+    # This is a simplified approach. A more robust solution might use route.name or regex matching.
+    path = request.url.path
+    method = request.method
+    endpoint_pattern = f"{method} {path}"
+    
+    # Simplify common patterns
+    if path.startswith("/admin/databases/spawn/") and "{db_name}" not in path:
+        endpoint_pattern = f"{method} /admin/databases/spawn/{{db_name}}"
+    elif path.startswith("/admin/databases/prune/") and "{db_name}" not in path:
+        endpoint_pattern = f"{method} /admin/databases/prune/{{db_name}}"
+    elif path.startswith("/api/db/") and "/query" in path and "{db_name}" not in path:
+        # This is tricky because the path is like /api/db/mydb/query
+        # We want to match /api/db/{db_name}/query
+        parts = path.split('/')
+        if len(parts) >= 5 and parts[1] == "api" and parts[2] == "db" and parts[4] == "query":
+             endpoint_pattern = f"{method} /api/db/{{db_name}}/query"
+    elif path.startswith("/api/db/") and "/tables/" in path and "/rows" in path and "{db_name}" not in path and "{table_name}" not in path:
+        # Similar simplification for /api/db/{db_name}/tables/{table_name}/rows
+        parts = path.split('/')
+        if len(parts) >= 7 and parts[1] == "api" and parts[2] == "db" and parts[4] == "tables" and parts[6] == "rows":
+             endpoint_pattern = f"{method} /api/db/{{db_name}}/tables/{{table_name}}/rows"
+    elif path.startswith("/api/db/") and "/tables" in path and "{db_name}" not in path:
+        # Simplification for /api/db/{db_name}/tables
+        parts = path.split('/')
+        if len(parts) >= 5 and parts[1] == "api" and parts[2] == "db" and parts[4] == "tables":
+             endpoint_pattern = f"{method} /api/db/{{db_name}}/tables"
+
+    increment_request_count(endpoint_pattern)
+    
+    try:
+        response = await call_next(request)
+        if response.status_code >= 400:
+            increment_error_count(response.status_code)
+        return response
+    except Exception as e:
+        # Catch unhandled exceptions and count them as 500 errors
+        increment_error_count(500)
+        raise e # Re-raise the exception for FastAPI's default error handling
 
 print(f"FastAPI app created: {app}")
 
@@ -176,6 +299,87 @@ class DBInstance(BaseModel):
     name: str
     container_id: str
     status: str
+
+# --- New Models for Stats and Discovery ---
+
+class GatewayStats(BaseModel):
+    """
+    Statistics for the DB-Gateway service itself.
+    """
+    uptime_seconds: float = Field(
+        ..., 
+        example=12345.67,
+        description="Number of seconds the gateway has been running."
+    )
+    total_requests: int = Field(
+        ..., 
+        example=1234,
+        description="Total number of HTTP requests received by the gateway."
+    )
+    total_errors: int = Field(
+        ..., 
+        example=5,
+        description="Total number of HTTP errors (4xx, 5xx) returned by the gateway."
+    )
+    requests_by_endpoint: Dict[str, int] = Field(
+        ..., 
+        example={"/admin/databases/spawn/{db_name}": 100, "/api/db/{db_name}/query": 800},
+        description="Breakdown of request counts by endpoint pattern."
+    )
+    errors_by_type: Dict[str, int] = Field(
+        ..., 
+        example={"401": 3, "500": 2},
+        description="Breakdown of error counts by HTTP status code."
+    )
+    # Add more stats as needed, e.g., Docker API call stats, auth stats
+
+class DatabaseInstanceStats(BaseModel):
+    """
+    Statistics for a specific database instance (Docker container).
+    """
+    db_name: str = Field(
+        ..., 
+        example="agent_memory_db",
+        description="The name of the database instance."
+    )
+    container_status: str = Field(
+        ..., 
+        example="running",
+        description="Current status of the Docker container (e.g., running, exited)."
+    )
+    container_uptime_seconds: Optional[float] = Field(
+        None, 
+        example=3600.0,
+        description="Uptime of the container in seconds (if running)."
+    )
+    # last_activity_timestamp: Optional[datetime] = Field(
+    #     None, 
+    #     example=datetime.utcnow(),
+    #     description="Approximate timestamp of the last API call to this database."
+    # )
+    database_file_size_bytes: Optional[int] = Field(
+        None, 
+        example=102400,
+        description="Size of the database file on disk in bytes."
+    )
+    # Add more stats as needed, e.g., container resource usage if available
+
+class DiscoveryInfo(BaseModel):
+    """
+    Structured discovery information for a database instance.
+    Useful for agents to programmatically find and connect.
+    """
+    db_name: str = Field(
+        ..., 
+        example="agent_memory_db",
+        description="The name of the database instance."
+    )
+    status: str = Field(
+        ..., 
+        example="running",
+        description="Current status of the database instance."
+    )
+    # Potentially add connection details, schema info snippets, etc. in the future
 
 class RawQueryRequest(BaseModel):
     """
@@ -507,6 +711,93 @@ def root():
 @app.get("/test-debug")
 def test_debug():
     return {"message": "Debug route is working!"}
+
+# --- New Stats and Discovery Endpoints ---
+@admin_router.get("/gateway/stats", response_model=GatewayStats, tags=["admin"])
+async def get_gateway_stats():
+    """
+    Retrieve statistics for the DB-Gateway service itself.
+    
+    Returns aggregated metrics about the gateway's operation, including uptime,
+    request volume, and error rates. Useful for monitoring the health of the
+    DB-Forge hub.
+    """
+    import time
+    uptime = time.time() - START_TIME
+    
+    return GatewayStats(
+        uptime_seconds=uptime,
+        total_requests=TOTAL_REQUESTS,
+        total_errors=TOTAL_ERRORS,
+        requests_by_endpoint=REQUESTS_BY_ENDPOINT,
+        errors_by_type=ERRORS_BY_TYPE
+    )
+
+@admin_router.get("/databases/{db_name}/stats", response_model=DatabaseInstanceStats, tags=["admin"])
+async def get_database_instance_stats(db_name: str):
+    """
+    Retrieve statistics for a specific database instance.
+    
+    Provides detailed metrics for a particular database, including its container
+    status, uptime, and file size. Useful for monitoring individual database
+    health and resource consumption.
+    """
+    if not docker_client:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Docker not available.")
+        
+    if not is_valid_db_name(db_name):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid database name.")
+    
+    worker_name = get_worker_name(db_name)
+    try:
+        container = docker_client.containers.get(worker_name)
+        container_status = container.status
+        
+        # Get container uptime if running
+        container_uptime = None
+        if container_status == "running":
+            # This is a simplified estimation. Docker provides more accurate uptime.
+            # For now, we'll leave it as None or a placeholder.
+            # A more accurate approach would involve parsing container.attrs['State']['StartedAt']
+            # and calculating the difference with current time.
+            pass
+            
+        # Get database file size
+        import os
+        db_path = get_db_path(db_name)
+        db_file_size = None
+        if os.path.exists(db_path):
+            db_file_size = os.path.getsize(db_path)
+            
+        return DatabaseInstanceStats(
+            db_name=db_name,
+            container_status=container_status,
+            container_uptime_seconds=container_uptime,
+            database_file_size_bytes=db_file_size
+        )
+    except docker.errors.NotFound:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Database instance not found.")
+    except docker.errors.APIError as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Docker API error: {e}")
+
+@admin_router.get("/discovery", response_model=List[DiscoveryInfo], tags=["admin"])
+async def discover_databases():
+    """
+    Service discovery endpoint for database instances.
+    
+    Lists all currently managed database instances along with their basic status.
+    This provides a structured way for agents or other services to programmatically
+    discover and connect to available databases.
+    """
+    if not docker_client:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Docker not available.")
+
+    instances = []
+    containers = docker_client.containers.list(all=True, filters={"label": "db-worker=true"})
+    for c in containers:
+        db_name = c.labels.get("db-name", "unknown")
+        instances.append(DiscoveryInfo(db_name=db_name, status=c.status))
+    return instances
 
 # Include the admin router with protected endpoints
 # This must be at the end of the file, after all routes have been added to the router
