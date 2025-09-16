@@ -85,12 +85,12 @@ async def load_admin_credentials():
         with open(ADMIN_CREDS_FILE, 'r') as f:
             data = json.load(f)
         
-        if "api_key_hash" not in data:
-             print(f"!!! ERROR !!! 'api_key_hash' not found in {ADMIN_CREDS_FILE}")
+        if "password_hash" not in data:
+             print(f"!!! ERROR !!! 'password_hash' not found in {ADMIN_CREDS_FILE}")
              print("                 Authentication will be disabled.")
              return
 
-        ADMIN_API_KEY_HASH = data["api_key_hash"]
+        ADMIN_API_KEY_HASH = data["password_hash"]
         print(f"Loaded admin credentials. Authentication is ENABLED.")
     except (json.JSONDecodeError, KeyError, IOError) as e:
         print(f"!!! ERROR !!! Failed to load admin credentials from {ADMIN_CREDS_FILE}: {e}")
@@ -127,16 +127,16 @@ async def first_time_setup():
     # In a real scenario, you'd prompt for email and password here.
     # For simplicity, we'll use placeholders.
     admin_email = "admin@db-forge.local" 
+    admin_password = "admin"  # Default password, should be changed by user
     
-    # Generate a secure API key
-    api_key = generate_secure_api_key()
-    api_key_hash = hash_api_key(api_key)
+    # Hash the password
+    password_hash = pwd_context.hash(admin_password)
     
     # Save the credentials
     ADMIN_CREDS_FILE.parent.mkdir(parents=True, exist_ok=True) # Ensure directory exists
     creds = {
         "email": admin_email,
-        "api_key_hash": api_key_hash
+        "password_hash": password_hash
     }
     try:
         with open(ADMIN_CREDS_FILE, 'w') as f:
@@ -149,7 +149,7 @@ async def first_time_setup():
     
     print(f"--- INITIAL ADMIN USER CREATED ---")
     print(f"Email: {admin_email}")
-    print(f"API Key: {api_key} (SAVE THIS IN A SECURE LOCATION)")
+    print(f"Password: {admin_password} (CHANGE THIS IMMEDIATELY)")
     print("--- SETUP COMPLETE ---")
 
 async def verify_admin_credentials(email: str, password: str) -> bool:
