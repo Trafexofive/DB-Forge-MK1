@@ -10,7 +10,7 @@ from typing import List, Dict, Any, Optional
 # Import our new auth module
 from auth import load_admin_credentials, first_time_setup_prompt, verify_api_key_header
 
-# ... (rest of the imports and config)
+print("main.py is being executed")
 
 # ======================================================================================
 #                               Configuration
@@ -50,6 +50,8 @@ app = FastAPI(
     },
 )
 
+print(f"FastAPI app created: {app}")
+
 # Create a dedicated router for admin endpoints, protected by API key auth
 admin_router = APIRouter(
     prefix="/admin",
@@ -67,9 +69,6 @@ app.add_middleware(
     allow_headers=["*"], # Allow all headers
     # expose_headers=["Access-Control-Allow-Origin"] # Optional: Expose specific headers to the browser
 )
-
-# Include the admin router with protected endpoints
-app.include_router(admin_router)
 
 # ======================================================================================
 #                               Structured Error Handling
@@ -470,23 +469,29 @@ async def insert_rows(db_name: str, table_name: str, req: InsertRequest):
 
 @app.on_event("startup")
 async def startup_event():
+    print("DB-Gateway is starting up...")
     # This is just to confirm docker_client is available on startup
     if not docker_client:
         print("WARNING: Docker client is not available. Admin functions will fail.")
     
     # Load admin credentials for authentication
     # If the file doesn't exist, this will print a warning and disable auth.
+    print("Loading admin credentials...")
     await load_admin_credentials()
+    print("Finished loading admin credentials.")
     
     # If auth is disabled due to missing file, trigger first-time setup prompt
     # Note: This is a simplified approach. A production system might handle this differently.
     from auth import ADMIN_API_KEY_HASH # Import to check if loaded
+    print(f"ADMIN_API_KEY_HASH loaded: {bool(ADMIN_API_KEY_HASH)}")
     if not ADMIN_API_KEY_HASH:
         print("No admin credentials found. Initiating first-time setup...")
         await first_time_setup_prompt()
         print("Setup complete. Please restart the service to load the new credentials.")
         # Optionally, you could raise an exception to stop the app here
         # raise RuntimeError("Initial setup required. Please restart after setup.")
+    else:
+        print("Admin credentials loaded. Authentication is ENABLED.")
 
 @app.get("/", include_in_schema=False)
 def root():
@@ -497,3 +502,14 @@ def root():
     This endpoint is excluded from the auto-generated API documentation schema.
     """
     return {"message": "Praetorian DB-Forge is online."}
+
+# --- Test Route for Debugging ---
+@app.get("/test-debug")
+def test_debug():
+    return {"message": "Debug route is working!"}
+
+# Include the admin router with protected endpoints
+# This must be at the end of the file, after all routes have been added to the router
+app.include_router(admin_router)
+
+print("main.py execution completed")

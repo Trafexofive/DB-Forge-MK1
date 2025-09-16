@@ -11,7 +11,7 @@ services:
     command:
       - "--configFile=/etc/traefik/traefik.yml"
     ports:
-      - "8081:80" # Changed from 80:80 to 8081:80 to avoid port conflicts
+      - "8081:8081" # Map host port 8081 to container port 8081
       - "8080:8080"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
@@ -27,6 +27,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.db-gateway.rule=Host(`${TRAEFIK_DB_DOMAIN}`)"
+      - "traefik.http.routers.db-gateway.entrypoints=web-alt" # Use the web-alt entrypoint
       - "traefik.http.services.db-gateway.loadbalancer.server.port=8000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -38,7 +39,7 @@ services:
     env_file:
       - .env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/admin/databases"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 5s
       timeout: 10s
       retries: 5

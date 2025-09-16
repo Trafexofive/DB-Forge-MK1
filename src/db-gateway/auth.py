@@ -14,8 +14,8 @@ ADMIN_CREDS_FILE = Path(os.getenv("ADMIN_CREDS_PATH", "./secrets/admin.json"))
 API_KEY_HEADER_NAME = os.getenv("API_KEY_HEADER_NAME", "X-API-Key")
 
 # --- Password Hashing ---
-# Using bcrypt for password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Using argon2 for password hashing (part of passlib[argon2])
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 # --- API Key Handling ---
 api_key_header = APIKeyHeader(name=API_KEY_HEADER_NAME, auto_error=False)
