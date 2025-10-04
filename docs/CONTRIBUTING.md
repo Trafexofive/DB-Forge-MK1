@@ -5,7 +5,7 @@ Welcome to the DB-Forge MK1 project! We're excited to have you contribute to bui
 ## 🌟 Ways to Contribute
 
 ### 🐛 Bug Reports
-- Report issues via [GitHub Issues](https://github.com/Trafexofive/db-forge/issues)
+- Report issues via [GitHub Issues](https://github.com/your-org/db-forge/issues)
 - Include steps to reproduce, expected vs actual behavior
 - Provide system information and log outputs when relevant
 

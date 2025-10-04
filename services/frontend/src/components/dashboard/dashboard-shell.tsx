@@ -1,6 +1,8 @@
 "use client"
 
 import { ReactNode, useState } from "react"
+import { usePathname } from "next/navigation"
+import Link from "next/link"
 import { 
   Database, 
   Menu, 
@@ -20,17 +22,24 @@ interface DashboardShellProps {
 }
 
 const navigation = [
-  { name: "Overview", href: "/", icon: BarChart3, current: true },
-  { name: "Databases", href: "/databases", icon: Database, current: false },
-  { name: "Connections", href: "/connections", icon: Activity, current: false },
-  { name: "Users", href: "/users", icon: Users, current: false },
-  { name: "Security", href: "/security", icon: Shield, current: false },
-  { name: "Logs", href: "/logs", icon: FileText, current: false },
-  { name: "Settings", href: "/settings", icon: Settings, current: false },
+  { name: "Overview", href: "/", icon: BarChart3 },
+  { name: "Databases", href: "/databases", icon: Database },
+  { name: "Connections", href: "/connections", icon: Activity },
+  { name: "Users", href: "/users", icon: Users },
+  { name: "Security", href: "/security", icon: Shield },
+  { name: "Logs", href: "/logs", icon: FileText },
+  { name: "Settings", href: "/settings", icon: Settings },
 ]
 
 export function DashboardShell({ children }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const pathname = usePathname()
+
+  const isCurrentPage = (href: string) => {
+    if (href === "/" && pathname === "/") return true
+    if (href !== "/" && pathname.startsWith(href)) return true
+    return false
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -44,26 +53,29 @@ export function DashboardShell({ children }: DashboardShellProps) {
             </div>
             <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
               <nav className="mt-5 flex-1 px-4 space-y-1">
-                {navigation.map((item) => (
-                  <a
-                    key={item.name}
-                    href={item.href}
-                    className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
-                      item.current
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                    }`}
-                  >
-                    <item.icon
-                      className={`mr-3 h-5 w-5 ${
-                        item.current
-                          ? "text-primary-foreground"
-                          : "text-muted-foreground group-hover:text-accent-foreground"
+                {navigation.map((item) => {
+                  const current = isCurrentPage(item.href)
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
+                        current
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                       }`}
-                    />
-                    {item.name}
-                  </a>
-                ))}
+                    >
+                      <item.icon
+                        className={`mr-3 h-5 w-5 ${
+                          current
+                            ? "text-primary-foreground"
+                            : "text-muted-foreground group-hover:text-accent-foreground"
+                        }`}
+                      />
+                      {item.name}
+                    </Link>
+                  )
+                })}
               </nav>
             </div>
           </div>
@@ -87,27 +99,30 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 <span className="ml-3 text-xl font-bold">DB-Forge</span>
               </div>
               <nav className="flex-1 px-4 pt-5 space-y-1">
-                {navigation.map((item) => (
-                  <a
-                    key={item.name}
-                    href={item.href}
-                    className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
-                      item.current
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                    }`}
-                    onClick={() => setSidebarOpen(false)}
-                  >
-                    <item.icon
-                      className={`mr-3 h-5 w-5 ${
-                        item.current
-                          ? "text-primary-foreground"
-                          : "text-muted-foreground group-hover:text-accent-foreground"
+                {navigation.map((item) => {
+                  const current = isCurrentPage(item.href)
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
+                        current
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                       }`}
-                    />
-                    {item.name}
-                  </a>
-                ))}
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <item.icon
+                        className={`mr-3 h-5 w-5 ${
+                          current
+                            ? "text-primary-foreground"
+                            : "text-muted-foreground group-hover:text-accent-foreground"
+                        }`}
+                      />
+                      {item.name}
+                    </Link>
+                  )
+                })}
               </nav>
             </div>
           </SheetContent>

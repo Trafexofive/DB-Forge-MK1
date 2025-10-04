@@ -1,0 +1,21 @@
+# ======================================================================================
+#                     PRAETORIAN DB-FORGE - DEVELOPMENT OVERRIDES
+# ======================================================================================
+#  Development-specific configuration for the DB-Forge stack
+# ======================================================================================
+version: '3.8'
+
+services:
+  db-gateway:
+    volumes:
+      # Mount source code for live reloading (if using uvicorn --reload)
+      - ../services/db-gateway/app:/app
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    environment:
+      - DEBUG=1
+
+  frontend:
+    volumes:
+      # Mount frontend source for development
+      - ../services/frontend/src:/usr/share/caddy
+      - ../services/frontend/Caddyfile:/etc/caddy/Caddyfile

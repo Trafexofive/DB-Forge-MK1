@@ -7,8 +7,7 @@ dbforge = DBForgeClient()
 @app.on_event("startup")
 async def startup():
     # Initialize application database
-    dbforge.spawn_database("weather_fastapi")
-    db = dbforge.get_database("app_main")
+    db = dbforge.get_database("medical_knowledge_db")
     
     # Setup schema
     db.create_table("users", [

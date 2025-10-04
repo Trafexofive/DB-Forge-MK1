@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from auth.auth import load_admin_credentials, first_time_setup, verify_admin_credentials, verify_api_key_header, create_access_token
 from routes.admin import router as admin_router
+from routes.data import router as data_router
 from utils.constants import TRAEFIK_DB_DOMAIN
 from models.database import LoginRequest, LoginResponse
 
@@ -172,5 +173,6 @@ async def login(request: LoginRequest):
 # Include the admin router with protected endpoints
 # This must be at the end of the file, after all routes have been added to the router
 app.include_router(admin_router)
+app.include_router(data_router)
 
 print("main.py execution completed")

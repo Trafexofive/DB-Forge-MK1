@@ -29,7 +29,7 @@ DB-Forge MK1 is a modern, containerized Database-as-a-Service platform designed 
 ### Current Stack (MK1)
 ```
 ┌─────────────────────┐
-│   Traefik Proxy    │  ← SSL termination, routing, load balancing
+│   Traefik Proxy     │  ← SSL termination, routing, load balancing
 └─────────┬───────────┘
           │
     ┌─────┴─────┬─────────────┐
@@ -42,10 +42,10 @@ DB-Forge MK1 is a modern, containerized Database-as-a-Service platform designed 
     │           │             │
     └───────────┼─────────────┘
                 │
-        ┌───────▼──────┐
+        ┌───────▼───────┐
         │Host Filesystem│  ← Data sovereignty
         │  ./db-data/   │
-        └──────────────┘
+        └───────────────┘
 ```
 
 ### Technology Choices & Rationale

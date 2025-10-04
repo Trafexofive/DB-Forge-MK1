@@ -107,10 +107,9 @@ async def first_time_setup():
     print("No existing admin credentials found.")
     print("Creating initial admin user...")
     
-    # In a real scenario, you'd prompt for email and password here.
-    # For simplicity, we'll use placeholders.
+    # Use a fixed API key for development
     admin_email = "admin@db-forge.local" 
-    admin_api_key = generate_secure_api_key()  # Generate a secure API key
+    admin_api_key = "development-api-key-12345"  # Fixed for development
     
     # Hash the API key
     api_key_hash = hash_api_key(admin_api_key)
@@ -125,14 +124,18 @@ async def first_time_setup():
     }
     
     print(f"--- INITIAL ADMIN CREDENTIALS ---")
-    print("Copy and save these credentials securely. They will NOT be displayed again.")
+    print("Development API Key (fixed for easy integration):")
     print(json.dumps(creds, indent=2))
     print("--- END CREDENTIALS ---")
     
-    # Don't save to file to avoid permission issues
-    # Instead, just inform the user that credentials are only available in the console
-    print("Credentials are only available in the console output above.")
-    print("Make sure to save them securely as they will NOT be displayed again.")
+    # Try to save credentials to file for persistence
+    try:
+        save_admin_credentials(admin_email, api_key_hash)
+        print("Credentials saved to file for persistence.")
+    except Exception as e:
+        print(f"Warning: Could not save credentials to file: {e}")
+        print("Credentials are only available in memory (will reset on restart).")
+    
     print("--- SETUP COMPLETE ---")
 
 # This function is deprecated as we're now using API key authentication

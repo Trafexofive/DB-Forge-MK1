@@ -15,14 +15,14 @@ services:
       - "8080:8080"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "./infra/traefik/traefik.yml:/etc/traefik/traefik.yml:ro"
+      - "./traefik/traefik.yml:/etc/traefik/traefik.yml:ro"
     networks:
       - ${CHIMERA_NETWORK}
 
   db-gateway:
     build:
-      context: .
-      dockerfile: src/db-gateway/Dockerfile
+      context: ..
+      dockerfile: services/db-gateway/Dockerfile
     container_name: db-gateway
     labels:
       - "traefik.enable=true"
@@ -34,7 +34,7 @@ services:
       # Mount the host data path to the gateway to manage DB files
       - ${DB_DATA_PATH}:/databases
       # Mount the secrets directory for admin credentials
-      - ./secrets:/app/secrets
+      - ../secrets:/app/secrets
     networks:
       - ${CHIMERA_NETWORK}
     restart: unless-stopped
@@ -47,16 +47,19 @@ services:
       retries: 5
 
   frontend:
-    image: caddy:2-alpine
+    build:
+      context: ../services/frontend
+      dockerfile: Dockerfile
     container_name: db-forge-frontend
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend.rule=Host(`frontend.${TRAEFIK_DB_DOMAIN}`)"
       - "traefik.http.routers.frontend.entrypoints=web-alt"
-      - "traefik.http.services.frontend.loadbalancer.server.port=80"
-    volumes:
-      - "./frontend:/usr/share/caddy"
-      - "./infra/caddy/Caddyfile:/etc/caddy/Caddyfile"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://db-gateway:8000
+      - NEXT_PUBLIC_API_KEY=development-api-key-12345
+      - NODE_ENV=production
     networks:
       - ${CHIMERA_NETWORK}
     restart: unless-stopped
