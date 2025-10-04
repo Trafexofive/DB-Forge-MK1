@@ -1,154 +1,280 @@
-# Praetorian DB-Forge
+# 🗡️ DB-Forge MK1 - Database Management Platform
 
-**Forged by Gemini, your Master Systems Consultant.**
+**Forged by Gemini for Absolute Data Sovereignty**
 
-Praetorian DB-Forge is a containerized Database-as-a-Service (DBaaS) platform designed to give you direct, simplified control over isolated database instances. It provides a robust RESTful API to dynamically create, manage, and interact with individual databases. Built with SQLite as the initial backend, it prioritizes ease of use, portability, and absolute data sovereignty.
+DB-Forge MK1 is a modern, containerized Database-as-a-Service (DBaaS) platform that provides complete control over isolated database instances. Built with a focus on developer experience, it offers both powerful APIs and an intuitive web interface for managing your database infrastructure.
 
 ## 🌟 Project Vision
 
-Our vision for Praetorian DB-Forge is to empower developers and automated systems with a self-hosted, highly flexible, and transparent data persistence layer. We aim to reduce the friction of managing multiple database environments, allowing you to focus on building and experimenting without worrying about infrastructure complexities.
+Empower developers and automated systems with a self-hosted, highly flexible, and transparent data persistence layer. Reduce the friction of managing multiple database environments while maintaining absolute data sovereignty and control.
 
 ## ✨ Key Features
 
-*   **Dynamic Database Provisioning:** Spin up or tear down isolated database environments with simple API calls. Ideal for testing, development, or ephemeral data storage.
-*   **Absolute Data Sovereignty:** Your data is stored directly on your host filesystem, ensuring full ownership, easy access, and persistence across container lifecycles.
-*   **RESTful API:** Interact with your databases using a straightforward HTTP API for common operations like CRUD, schema changes, and raw SQL queries. Designed for programmatic access.
-*   **Isolated Instances:** Every database runs in its own dedicated Docker container, providing clear separation, preventing conflicts, and enhancing security.
-*   **Extensible Design:** The architecture is designed for easy integration of other database backends (like PostgreSQL, Redis, etc.) in the future, without changing the core API.
+### 🚀 **Core Platform**
+- **Dynamic Database Provisioning**: Spin up or tear down isolated database environments with simple API calls
+- **Absolute Data Sovereignty**: Your data stays on your filesystem with full ownership and persistence
+- **RESTful API**: Comprehensive HTTP API for all database operations and management
+- **Isolated Instances**: Every database runs in its own dedicated Docker container for security and separation
+
+### 🎨 **Modern Web Interface**
+- **Next.js Admin Dashboard**: Professional, responsive web UI built with modern React
+- **Real-time Monitoring**: Live database status, connections, and health metrics  
+- **Mobile-First Design**: Clean, accessible interface that works on all devices
+- **shadcn/ui Components**: Beautiful, accessible UI components with Radix primitives
+
+### 🔧 **Developer Experience**
+- **Comprehensive Makefile**: 25+ commands for development, testing, and deployment
+- **Multiple Client Libraries**: Python, C++, and TUI clients with full API coverage
+- **Docker-First**: Fully containerized with optimized builds and easy deployment
+- **Type-Safe APIs**: Full TypeScript support with comprehensive error handling
+
+### 📊 **Enterprise Ready**
+- **Traefik Integration**: Intelligent reverse proxy with automatic service discovery
+- **Health Monitoring**: Built-in health checks and status reporting
+- **Production Builds**: Optimized Docker images with standalone outputs
+- **Extensible Architecture**: Plugin-ready design for multiple database backends
 
 ## 🏗️ Architecture Overview
 
-The system consists of two primary components working in concert:
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Traefik Proxy                        │
+│              (http://db.localhost:8081)                 │
+└─────────────────┬───────────────┬───────────────────────┘
+                  │               │
+        ┌─────────▼─────────┐   ┌─▼─────────────┐
+        │   DB Gateway      │   │   Frontend    │
+        │   (FastAPI)       │   │   (Next.js)   │
+        │   Port: 8000      │   │   Port: 3000  │
+        └─────────┬─────────┘   └───────────────┘
+                  │
+        ┌─────────▼─────────┐
+        │  Database Workers │
+        │   (SQLite/etc)    │
+        │  Isolated Containers │
+        └───────────────────┘
+```
 
-1.  **DB Worker Base (`db-worker-base`):** A minimal Docker image (based on `alpine:latest` with `sqlite3`) that serves as a lightweight template for each database instance. These workers are designed to be ephemeral containers that hold your database files.
-2.  **DB Gateway (`db-gateway`):
-    A FastAPI application that acts as the central hub for all database operations. It handles:
-    *   **Database Lifecycle Management:** API endpoints to create, remove, and list database instances.
-    *   **Data Operations:** Translates your HTTP requests into SQL commands, executes them against the appropriate database files (which are mounted from your host), and returns results as JSON.
+### Core Components
 
-All external network traffic is managed by a Traefik reverse proxy, providing a single, intelligent entry point to the DB-Forge services.
+1. **DB Gateway**: FastAPI service managing database lifecycles and operations
+2. **Frontend**: Next.js admin interface for monitoring and management  
+3. **Database Workers**: Isolated containers running individual database instances
+4. **Traefik Proxy**: Intelligent routing and load balancing
+5. **Client Libraries**: Multi-language SDKs for programmatic access
 
-For a more in-depth look at the system's design principles and component interactions, refer to the [Architecture Deep Dive](docs/ARCHITECTURE.md).
-
-## 🚀 Getting Started
-
-All common development and deployment tasks are automated using the `Makefile`.
+## 🚀 Quick Start
 
 ### Prerequisites
 
-Make sure you have the following installed:
+- **Docker** & **Docker Compose**
+- **Node.js 20+** (for frontend development)
+- **Make** (for automation)
 
-*   [Docker](https://docs.docker.com/get-docker/)
-*   [Docker Compose](https://docs.docker.com/compose/install/)
-
-### 1. Configure Your Environment
-
-Copy the example environment file and adjust any settings as needed:
+### 1. Clone & Setup
 
 ```bash
-cp .env.example .env
+git clone <repository-url>
+cd DB-Forge-MK1
+
+# Copy and customize environment
+cp infra/.env.example infra/.env
 ```
 
-### 2. Start the Services
-
-This command builds the necessary Docker images and starts the DB Gateway and Traefik proxy:
+### 2. Start the Platform
 
 ```bash
+# Build and start all services
 make up
+
+# Or start in development mode with live reload
+make dev
 ```
 
-### 3. Access the API
+### 3. Access the Platform
 
-The DB Gateway is accessible via Traefik. By default, it routes traffic to `http://db.localhost`.
-For detailed API endpoints and usage examples, refer to the [API Specification](docs/API.md).
+- **Admin Dashboard**: http://frontend.db.localhost:8081
+- **API Documentation**: http://db.localhost:8081/docs  
+- **Traefik Dashboard**: http://localhost:8080/dashboard/
 
-## 📚 Client Libraries
+## 📚 Development
 
-DB-Forge includes comprehensive client libraries to make integration easy:
+### Frontend Development
+
+```bash
+# Install dependencies
+make frontend-install
+
+# Start development server (hot reload)
+make frontend-dev
+
+# Build for production
+make frontend-build
+
+# Lint code
+make frontend-lint
+```
+
+### API Development
+
+```bash
+# View API logs
+make logs
+
+# Access gateway shell
+make ssh
+
+# Run tests
+make test
+
+# Check service status
+make status
+```
+
+### Complete Command Reference
+
+```bash
+# Core Stack Management
+make up          # Build and start all services
+make down        # Stop and remove containers  
+make restart     # Restart all services
+make re          # Clean rebuild from scratch
+
+# Development
+make dev         # Development mode with live reload
+make build       # Build all service images
+make rebuild     # Force rebuild (no cache)
+
+# Frontend
+make frontend-dev      # Next.js dev server
+make frontend-build    # Production build
+make frontend-install  # Install dependencies
+make frontend-lint     # Lint code
+make frontend-clean    # Clean build artifacts
+
+# Diagnostics
+make status      # Service status
+make logs        # Gateway logs
+make logs-all    # All service logs
+make health      # Health checks
+make ssh         # Gateway shell
+
+# Testing & Cleanup
+make test        # Run test suite
+make clean       # Remove containers/data ⚠️
+make fclean      # Deep clean with volumes ⚠️
+make prune       # Clean unused Docker resources
+```
+
+## 🧪 Client Libraries
 
 ### 🐍 Python Client
-```bash
-cd clients/python
-pip install -e .
-
-# Basic usage
+```python
 from dbforge_client import DBForgeClient
-client = DBForgeClient("http://db.localhost")
-client.spawn_database("my-app")
+
+client = DBForgeClient("http://db.localhost:8081")
+await client.spawn_database("my-app")
+result = await client.execute_query("my-app", "SELECT * FROM users")
 ```
 
 ### 🔧 C++ Client  
-```bash
-cd clients/cpp
-mkdir build && cd build && cmake .. && make
-
-# Usage
+```cpp
 #include <dbforge/dbforge.hpp>
-dbforge::Client client("http://db.localhost");
+
+dbforge::Client client("http://db.localhost:8081");
 client.spawn_database("my-app");
+auto result = client.execute_query("my-app", "SELECT * FROM users");
 ```
 
-### 🖥️ TUI Client (Interactive Terminal UI)
+### 🖥️ TUI Client (Interactive Terminal)
 ```bash
-cd clients/tui
-make install && make run
-
+cd clients/tui && make run
 # Features: Real-time dashboard, SQL editor, table browser
-# Navigate with keyboard, vim-like bindings available
 ```
 
 **Features:**
-- Complete API coverage for all DB-Forge endpoints
-- Exception-safe error handling with detailed error information  
-- Both synchronous and asynchronous support (Python)
-- Thread-safe concurrent operations (C++)
-- Command-line interface (Python)
-- Comprehensive examples and integration guides
-
-For detailed documentation, see [Client Libraries Documentation](clients/README.md).
+- 🔒 Exception-safe error handling
+- ⚡ Async/await support (Python)
+- 🧵 Thread-safe operations (C++)
+- 📱 Interactive TUI with vim bindings
+- 📖 Comprehensive documentation
 
 ## 🧪 Testing
 
-The project includes a comprehensive suite of API tests to verify functionality and stability.
-
-To run the tests, ensure your Docker stack is running (`make up`), then execute:
-
 ```bash
+# Run comprehensive test suite
 make test
+
+# Test specific components
+cd testing && python -m pytest tests/
 ```
 
-This command will:
-*   Clean up any test databases from previous runs.
-*   Restart the `db-gateway` service to ensure a fresh state.
-*   Execute the API test suite against the running gateway.
+The test suite covers:
+- API endpoint validation
+- Database lifecycle management
+- Error handling scenarios
+- Client library functionality
+- Integration testing
 
-## 🧹 Cleanup
+## 📖 Documentation
 
-To shut down the entire stack and remove all associated containers, networks, and persistent data:
+### Core Documentation
+- [API Specification](docs/API.md) - Complete REST API reference
+- [Architecture Deep Dive](docs/ARCHITECTURE.md) - System design and components
+- [Contributing Guidelines](docs/CONTRIBUTING.md) - How to contribute
+- [Project Roadmap](TODO.md) - Future features and improvements
 
-```bash
-make clean
-```
+### Component Documentation
+- [Frontend README](services/frontend/README.md) - Next.js admin interface
+- [Client Libraries](clients/README.md) - Multi-language SDK documentation
+- [Testing Guide](testing/README.md) - Test suite and validation
 
-**⚠️ WARNING:** The `make clean` command will **permanently delete all database files** stored in the `db-data/` directory. Use with caution.
+## 🔄 Roadmap & Future Features
 
-## 🗺️ Roadmap
+### ✅ Current (MK1)
+- SQLite backend with container isolation
+- RESTful API with FastAPI
+- Next.js admin dashboard
+- Python/C++/TUI clients
+- Docker containerization
+- Traefik reverse proxy
 
-Curious about what's next for Praetorian DB-Forge? Check out our [Project Roadmap](TODO.md) for planned features and future directions.
+### 🚧 Phase II (MK2) - Enhanced Experience  
+- Multi-backend support (PostgreSQL, MySQL, Redis)
+- Authentication & authorization
+- Advanced monitoring & metrics
+- Backup & restore functionality
+- WebSocket real-time updates
+
+### 🌟 Phase III (MK3) - AI Integration
+- Agent SDKs for AI systems
+- Semantic query layer (natural language → SQL)
+- Autonomous database management
+- Knowledge graph integration
+- Advanced analytics dashboard
 
 ## 🤝 Contributing
 
-We welcome contributions! Please refer to our [Contribution Guidelines](docs/CONTRIBUTING.md) for details on how to get involved.
+We welcome contributions! Please see our [Contributing Guidelines](docs/CONTRIBUTING.md) for:
+
+- Development setup and workflow
+- Code style and conventions  
+- Testing requirements
+- Documentation standards
+- Pull request process
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the **MIT License** - see [LICENSE](LICENSE) for details.
+
+## 🔗 Links & Resources
+
+- **Live Demo**: (Coming Soon)
+- **Documentation**: Full docs in `/docs` directory
+- **Issues**: GitHub Issues for bug reports and feature requests
+- **Discussions**: GitHub Discussions for community support
 
 ---
 
-**Further Documentation:**
-
-*   [API Specification](docs/API.md)
-*   [Architecture Deep Dive](docs/ARCHITECTURE.md)
-*   [Contribution Guidelines](docs/CONTRIBUTING.md)
-*   [Project Roadmap](TODO.md)
+**Built with ❤️ by the DB-Forge Team**  
+*Empowering developers with sovereign data infrastructure*
