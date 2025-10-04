@@ -109,42 +109,6 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 // Utility function to make API requests with API Key
-async function apiRequestWithApiKey(endpoint, options = {}) {
-    const url = `${BASE_URL}${endpoint}`;
-    const headers = {
-        'Host': HOST_HEADER,
-        'Content-Type': 'application/json',
-        ...options.headers
-    };
-    
-    // Get API key from local storage
-    const apiKey = localStorage.getItem('db-forge-api-key');
-    if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-    }
-    
-    const config = {
-        method: 'GET',
-        headers,
-        ...options
-    };
-    
-    try {
-        showLoading();
-        const response = await fetch(url, config);
-        hideLoading();
-        
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || `HTTP Error: ${response.status}`);
-        }
-        
-        return await response.json();
-    } catch (error) {
-        hideLoading();
-        console.error('API Request failed:', error);
-        throw error;
-    }
 }
 
 // Function to login
@@ -176,6 +140,9 @@ async function login() {
         authToken = data.access_token;
         isLoggedIn = true;
         
+        // Save token to localStorage for persistence
+        localStorage.setItem('db-forge-auth-token', authToken);
+        
         // Hide auth section and show main content
         authSection.style.display = 'none';
         mainContent.style.display = 'block';
@@ -191,6 +158,9 @@ function logout() {
     authToken = '';
     isLoggedIn = false;
     
+    // Remove token from localStorage
+    localStorage.removeItem('db-forge-auth-token');
+    
     // Show auth section and hide main content
     authSection.style.display = 'block';
     mainContent.style.display = 'none';
@@ -203,7 +173,7 @@ function logout() {
 // Function to fetch and display gateway stats
 async function fetchAndDisplayGatewayStats() {
     try {
-        const stats = await apiRequestWithApiKey('/admin/gateway/stats');
+        const stats = await apiRequest('/admin/gateway/stats');
         let html = `<h3>Gateway Statistics</h3>`;
         html += `<p><strong>Uptime:</strong> ${stats.uptime_seconds.toFixed(2)} seconds</p>`;
         html += `<p><strong>Total Requests:</strong> ${stats.total_requests}</p>`;
@@ -232,7 +202,7 @@ async function fetchAndDisplayGatewayStats() {
 // Function to fetch and display discovered databases
 async function fetchAndDisplayDiscovery() {
     try {
-        const databases = await apiRequestWithApiKey('/admin/discovery');
+        const databases = await apiRequest('/admin/discovery');
         if (databases.length === 0) {
             discoveryListDiv.innerHTML = '<p>No database instances discovered.</p>';
         } else {
@@ -261,7 +231,7 @@ spawnDbBtn.addEventListener('click', async () => {
     }
     
     try {
-        const data = await apiRequestWithApiKey(`/admin/databases/spawn/${dbName}`, {
+        const data = await apiRequest(`/admin/databases/spawn/${dbName}`, {
             method: 'POST'
         });
         showStatus(dbManagementStatus, `Database '${dbName}' spawned successfully!`, true);
@@ -279,7 +249,7 @@ pruneDbBtn.addEventListener('click', async () => {
     }
     
     try {
-        const data = await apiRequestWithApiKey(`/admin/databases/prune/${dbName}`, {
+        const data = await apiRequest(`/admin/databases/prune/${dbName}`, {
             method: 'POST'
         });
         showStatus(dbManagementStatus, `Database '${dbName}' pruned successfully!`, true);
@@ -291,7 +261,7 @@ pruneDbBtn.addEventListener('click', async () => {
 
 listDbsBtn.addEventListener('click', async () => {
     try {
-        const databases = await apiRequestWithApiKey('/admin/databases');
+        const databases = await apiRequest('/admin/databases');
         if (databases.length === 0) {
             dbList.innerHTML = '<p>No active databases found.</p>';
         } else {
@@ -324,7 +294,7 @@ createTableBtn.addEventListener('click', async () => {
     
     try {
         const columns = JSON.parse(columnsJson);
-        const data = await apiRequestWithApiKey(`/api/db/${dbName}/tables`, {
+        const data = await apiRequest(`/api/db/${dbName}/tables`, {
             method: 'POST',
             body: JSON.stringify({
                 table_name: tableName,
@@ -357,7 +327,7 @@ insertDataBtn.addEventListener('click', async () => {
     
     try {
         const rows = JSON.parse(dataJson);
-        const data = await apiRequestWithApiKey(`/api/db/${dbName}/tables/${tableName}/rows`, {
+        const data = await apiRequest(`/api/db/${dbName}/tables/${tableName}/rows`, {
             method: 'POST',
             body: JSON.stringify({
                 rows: rows
@@ -402,7 +372,7 @@ queryDataBtn.addEventListener('click', async () => {
     }
     
     try {
-        const data = await apiRequestWithApiKey(url);
+        const data = await apiRequest(url);
         if (data.data && data.data.length > 0) {
             // Create a simple table to display the results
             let html = `<p><strong>Query returned ${data.rows_affected} rows:</strong></p>`;
@@ -448,16 +418,200 @@ document.addEventListener('DOMContentLoaded', () => {
         authSection.style.display = 'none';
         mainContent.style.display = 'block';
     }
+    
+    // Event Listeners
+    loginBtn.addEventListener('click', login);
+    logoutBtn.addEventListener('click', logout);
+    
+    // --- New Event Listeners for Stats and Discovery ---
+    
+    getGatewayStatsBtn.addEventListener('click', fetchAndDisplayGatewayStats);
+    
+    discoverDbsBtn.addEventListener('click', fetchAndDisplayDiscovery);
+    
+    // --- End of New Event Listeners ---
+    
+    // Database Management Event Listeners
+    spawnDbBtn.addEventListener('click', async () => {
+        const dbName = newDbNameInput.value.trim();
+        if (!dbName) {
+            showStatus(dbManagementStatus, 'Please enter a database name.', false);
+            return;
+        }
+        
+        try {
+            const data = await apiRequest(`/admin/databases/spawn/${dbName}`, {
+                method: 'POST'
+            });
+            showStatus(dbManagementStatus, `Database '${dbName}' spawned successfully!`, true);
+            newDbNameInput.value = ''; // Clear the input
+        } catch (error) {
+            showStatus(dbManagementStatus, `Failed to spawn database: ${error.message}`, false);
+        }
+    });
+    
+    pruneDbBtn.addEventListener('click', async () => {
+        const dbName = pruneDbNameInput.value.trim();
+        if (!dbName) {
+            showStatus(dbManagementStatus, 'Please enter a database name.', false);
+            return;
+        }
+        
+        try {
+            const data = await apiRequest(`/admin/databases/prune/${dbName}`, {
+                method: 'POST'
+            });
+            showStatus(dbManagementStatus, `Database '${dbName}' pruned successfully!`, true);
+            pruneDbNameInput.value = ''; // Clear the input
+        } catch (error) {
+            showStatus(dbManagementStatus, `Failed to prune database: ${error.message}`, false);
+        }
+    });
+    
+    listDbsBtn.addEventListener('click', async () => {
+        try {
+            const databases = await apiRequest('/admin/databases');
+            if (databases.length === 0) {
+                dbList.innerHTML = '<p>No active databases found.</p>';
+            } else {
+                let html = '<ul class="list-group">';
+                databases.forEach(db => {
+                    html += `<li class="list-group-item">
+                        <strong>${db.name}</strong> - 
+                        Container ID: ${db.container_id} - 
+                        Status: ${db.status}
+                    </li>`;
+                });
+                html += '</ul>';
+                dbList.innerHTML = html;
+            }
+        } catch (error) {
+            dbList.innerHTML = `<p class="error">Failed to list databases: ${error.message}</p>`;
+        }
+    });
+    
+    // Data Operations Event Listeners
+    createTableBtn.addEventListener('click', async () => {
+        const dbName = dbForTableInput.value.trim();
+        const tableName = tableNameInput.value.trim();
+        const columnsJson = tableColumnsInput.value.trim();
+        
+        if (!dbName || !tableName || !columnsJson) {
+            showStatus(dataOpStatus, 'Please fill in all fields for creating a table.', false);
+            return;
+        }
+        
+        try {
+            const columns = JSON.parse(columnsJson);
+            const data = await apiRequest(`/api/db/${dbName}/tables`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    table_name: tableName,
+                    columns: columns
+                })
+            });
+            showStatus(dataOpStatus, `Table '${tableName}' created successfully in database '${dbName}'!`, true);
+            // Clear the inputs
+            dbForTableInput.value = '';
+            tableNameInput.value = '';
+            tableColumnsInput.value = '';
+        } catch (error) {
+            if (error instanceof SyntaxError) {
+                showStatus(dataOpStatus, 'Invalid JSON in columns field.', false);
+            } else {
+                showStatus(dataOpStatus, `Failed to create table: ${error.message}`, false);
+            }
+        }
+    });
+    
+    insertDataBtn.addEventListener('click', async () => {
+        const dbName = dbForInsertInput.value.trim();
+        const tableName = tableForInsertInput.value.trim();
+        const dataJson = insertDataInput.value.trim();
+        
+        if (!dbName || !tableName || !dataJson) {
+            showStatus(dataOpStatus, 'Please fill in all fields for inserting data.', false);
+            return;
+        }
+        
+        try {
+            const rows = JSON.parse(dataJson);
+            const data = await apiRequest(`/api/db/${dbName}/tables/${tableName}/rows`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    rows: rows
+                })
+            });
+            showStatus(dataOpStatus, `Data inserted successfully into '${tableName}' in database '${dbName}'! (${data.rows_affected} rows affected)`, true);
+            // Clear the inputs
+            dbForInsertInput.value = '';
+            tableForInsertInput.value = '';
+            insertDataInput.value = '';
+        } catch (error) {
+            if (error instanceof SyntaxError) {
+                showStatus(dataOpStatus, 'Invalid JSON in data field.', false);
+            } else {
+                showStatus(dataOpStatus, `Failed to insert data: ${error.message}`, false);
+            }
+        }
+    });
+    
+    queryDataBtn.addEventListener('click', async () => {
+        const dbName = dbForQueryInput.value.trim();
+        const tableName = tableForQueryInput.value.trim();
+        const queryParams = queryParamsInput.value.trim();
+        
+        if (!dbName || !tableName) {
+            showStatus(dataOpStatus, 'Please enter database and table names for querying.', false);
+            return;
+        }
+        
+        let url = `/api/db/${dbName}/tables/${tableName}/rows`;
+        
+        // Add query parameters if provided
+        if (queryParams) {
+            const params = new URLSearchParams();
+            queryParams.split('\n').forEach(param => {
+                const [key, value] = param.split('=');
+                if (key && value !== undefined) {
+                    params.append(key.trim(), value.trim());
+                }
+            });
+            url += `?${params.toString()}`;
+        }
+        
+        try {
+            const data = await apiRequest(url);
+            if (data.data && data.data.length > 0) {
+                // Create a simple table to display the results
+                let html = `<p><strong>Query returned ${data.rows_affected} rows:</strong></p>`;
+                html += '<div class="table-responsive"><table class="table table-striped table-bordered">';
+                
+                // Table header
+                html += '<thead><tr>';
+                Object.keys(data.data[0]).forEach(key => {
+                    html += `<th>${key}</th>`;
+                });
+                html += '</tr></thead>';
+                
+                // Table body
+                html += '<tbody>';
+                data.data.forEach(row => {
+                    html += '<tr>';
+                    Object.values(row).forEach(value => {
+                        html += `<td>${value}</td>`;
+                    });
+                    html += '</tr>';
+                });
+                html += '</tbody>';
+                
+                html += '</table></div>';
+                queryResult.innerHTML = html;
+            } else {
+                queryResult.innerHTML = '<p>No data returned from query.</p>';
+            }
+        } catch (error) {
+            queryResult.innerHTML = `<p class="error">Failed to query data: ${error.message}</p>`;
+        }
+    });
 });
-
-// Event Listeners
-loginBtn.addEventListener('click', login);
-logoutBtn.addEventListener('click', logout);
-
-// --- New Event Listeners for Stats and Discovery ---
-
-getGatewayStatsBtn.addEventListener('click', fetchAndDisplayGatewayStats);
-
-discoverDbsBtn.addEventListener('click', fetchAndDisplayDiscovery);
-
-// --- End of New Event Listeners ---

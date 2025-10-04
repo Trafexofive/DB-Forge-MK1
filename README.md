@@ -62,6 +62,42 @@ make up
 The DB Gateway is accessible via Traefik. By default, it routes traffic to `http://db.localhost`.
 For detailed API endpoints and usage examples, refer to the [API Specification](docs/API.md).
 
+## 📚 Client Libraries
+
+DB-Forge includes comprehensive client libraries to make integration easy:
+
+### 🐍 Python Client
+```bash
+cd clients/python
+pip install -e .
+
+# Basic usage
+from dbforge_client import DBForgeClient
+client = DBForgeClient("http://db.localhost")
+client.spawn_database("my-app")
+```
+
+### 🔧 C++ Client  
+```bash
+cd clients/cpp
+mkdir build && cd build && cmake .. && make
+
+# Usage
+#include <dbforge/dbforge.hpp>
+dbforge::Client client("http://db.localhost");
+client.spawn_database("my-app");
+```
+
+**Features:**
+- Complete API coverage for all DB-Forge endpoints
+- Exception-safe error handling with detailed error information  
+- Both synchronous and asynchronous support (Python)
+- Thread-safe concurrent operations (C++)
+- Command-line interface (Python)
+- Comprehensive examples and integration guides
+
+For detailed documentation, see [Client Libraries Documentation](clients/README.md).
+
 ## 🧪 Testing
 
 The project includes a comprehensive suite of API tests to verify functionality and stability.

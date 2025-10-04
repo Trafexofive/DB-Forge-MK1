@@ -35,3 +35,11 @@ db-data/
 .localized
 .Trashes
 Thumbs.db
+# Client library build artifacts
+clients/cpp/build/
+clients/python/build/
+clients/python/dist/
+clients/python/*.egg-info/
+clients/python/venv/
+__pycache__/
+*.pyc

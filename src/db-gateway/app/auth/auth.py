@@ -32,25 +32,6 @@ api_key_header = APIKeyHeader(name=API_KEY_HEADER_NAME, auto_error=False)
 # For a production system with key rotation, this would need to be more dynamic.
 ADMIN_API_KEY_HASH: str = "" # This will be loaded at startup
 
-# --- Configuration ---
-# Path to the file storing admin credentials (outside the container for persistence)
-ADMIN_CREDS_FILE = Path(os.getenv("ADMIN_CREDS_PATH", "./secrets/admin.json"))
-# Name of the HTTP header to expect the API key
-API_KEY_HEADER_NAME = os.getenv("API_KEY_HEADER_NAME", "X-API-Key")
-
-# --- Password Hashing ---
-# Using argon2 for password hashing (part of passlib[argon2])
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
-
-# --- API Key Handling ---
-api_key_header = APIKeyHeader(name=API_KEY_HEADER_NAME, auto_error=False)
-
-# --- In-Memory Storage ---
-# To avoid reading the file on every request, we'll load the hashed key once.
-# This assumes the key doesn't change during the app's lifetime without a restart.
-# For a production system with key rotation, this would need to be more dynamic.
-ADMIN_API_KEY_HASH: str = "" # This will be loaded at startup
-
 def hash_api_key(api_key: str) -> str:
     """Hash an API key."""
     return pwd_context.hash(api_key)
@@ -78,19 +59,19 @@ async def load_admin_credentials():
     if not ADMIN_CREDS_FILE.exists():
         print(f"!!! WARNING !!! Admin credentials file not found: {ADMIN_CREDS_FILE}")
         print("                 Authentication will be disabled.")
-        print("                 To enable auth, create the file or restart to trigger first-time setup.")
+        print("                 To enable auth, restart the service to trigger first-time setup.")
         return
 
     try:
         with open(ADMIN_CREDS_FILE, 'r') as f:
             data = json.load(f)
         
-        if "password_hash" not in data:
-             print(f"!!! ERROR !!! 'password_hash' not found in {ADMIN_CREDS_FILE}")
+        if "api_key_hash" not in data:
+             print(f"!!! ERROR !!! 'api_key_hash' not found in {ADMIN_CREDS_FILE}")
              print("                 Authentication will be disabled.")
              return
 
-        ADMIN_API_KEY_HASH = data["password_hash"]
+        ADMIN_API_KEY_HASH = data["api_key_hash"]
         print(f"Loaded admin credentials. Authentication is ENABLED.")
     except (json.JSONDecodeError, KeyError, IOError) as e:
         print(f"!!! ERROR !!! Failed to load admin credentials from {ADMIN_CREDS_FILE}: {e}")
@@ -116,6 +97,8 @@ async def first_time_setup():
     """
     First-time setup for the admin user.
     """
+    global ADMIN_API_KEY_HASH
+    
     print("--- FIRST TIME ADMIN SETUP ---")
     if ADMIN_CREDS_FILE.exists():
         print("Admin credentials already exist. Skipping setup.")
@@ -127,52 +110,40 @@ async def first_time_setup():
     # In a real scenario, you'd prompt for email and password here.
     # For simplicity, we'll use placeholders.
     admin_email = "admin@db-forge.local" 
-    admin_password = "admin"  # Default password, should be changed by user
+    admin_api_key = generate_secure_api_key()  # Generate a secure API key
     
-    # Hash the password
-    password_hash = pwd_context.hash(admin_password)
+    # Hash the API key
+    api_key_hash = hash_api_key(admin_api_key)
     
-    # Save the credentials
-    ADMIN_CREDS_FILE.parent.mkdir(parents=True, exist_ok=True) # Ensure directory exists
+    # Store the hash in memory for authentication
+    ADMIN_API_KEY_HASH = api_key_hash
+    
+    # Print credentials to console for easy access
     creds = {
         "email": admin_email,
-        "password_hash": password_hash
+        "api_key": admin_api_key
     }
-    try:
-        with open(ADMIN_CREDS_FILE, 'w') as f:
-            json.dump(creds, f, indent=4)
-        os.chmod(ADMIN_CREDS_FILE, 0o600) # Set restrictive permissions
-        print(f"Admin credentials saved to {ADMIN_CREDS_FILE}")
-    except IOError as e:
-        print(f"!!! ERROR !!! Failed to save admin credentials to {ADMIN_CREDS_FILE}: {e}")
-        raise # Re-raise to potentially stop the application
     
-    print(f"--- INITIAL ADMIN USER CREATED ---")
-    print(f"Email: {admin_email}")
-    print(f"Password: {admin_password} (CHANGE THIS IMMEDIATELY)")
+    print(f"--- INITIAL ADMIN CREDENTIALS ---")
+    print("Copy and save these credentials securely. They will NOT be displayed again.")
+    print(json.dumps(creds, indent=2))
+    print("--- END CREDENTIALS ---")
+    
+    # Don't save to file to avoid permission issues
+    # Instead, just inform the user that credentials are only available in the console
+    print("Credentials are only available in the console output above.")
+    print("Make sure to save them securely as they will NOT be displayed again.")
     print("--- SETUP COMPLETE ---")
 
+# This function is deprecated as we're now using API key authentication
+# Keeping it for backward compatibility but it's not used in the current implementation
 async def verify_admin_credentials(email: str, password: str) -> bool:
     """
     Verify admin credentials.
+    DEPRECATED: This function is deprecated as we're now using API key authentication.
     """
-    if not ADMIN_CREDS_FILE.exists():
-        return False
-    
-    try:
-        with open(ADMIN_CREDS_FILE, 'r') as f:
-            data = json.load(f)
-        
-        if "email" not in data or "password_hash" not in data:
-            return False
-            
-        if data["email"] != email:
-            return False
-            
-        return pwd_context.verify(password, data["password_hash"])
-    except (json.JSONDecodeError, KeyError, IOError) as e:
-        print(f"!!! ERROR !!! Failed to verify admin credentials: {e}")
-        return False
+    print("WARNING: verify_admin_credentials is deprecated. Use API key authentication instead.")
+    return False
 
 async def verify_api_key_header(api_key_header: str = Depends(api_key_header)):
     """
@@ -187,6 +158,7 @@ async def verify_api_key_header(api_key_header: str = Depends(api_key_header)):
             - 503 Service Unavailable: If auth is misconfigured.
     """
     # Check if auth is configured
+    print(f"DEBUG: ADMIN_API_KEY_HASH length: {len(ADMIN_API_KEY_HASH) if ADMIN_API_KEY_HASH else 0}")
     if not ADMIN_API_KEY_HASH:
         # This could mean auth is disabled or misconfigured
         raise HTTPException(
@@ -195,6 +167,7 @@ async def verify_api_key_header(api_key_header: str = Depends(api_key_header)):
         )
 
     # Check if key was provided
+    print(f"DEBUG: API key header provided: {bool(api_key_header)}")
     if not api_key_header:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -203,7 +176,10 @@ async def verify_api_key_header(api_key_header: str = Depends(api_key_header)):
         )
     
     # Verify the key
-    if not verify_api_key(api_key_header, ADMIN_API_KEY_HASH):
+    print(f"DEBUG: Verifying API key...")
+    is_valid = verify_api_key(api_key_header, ADMIN_API_KEY_HASH)
+    print(f"DEBUG: API key is valid: {is_valid}")
+    if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid API Key.",

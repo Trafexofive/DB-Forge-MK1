@@ -143,6 +143,7 @@ async def startup_event():
         print("No admin credentials found. Authentication will be disabled.")
     else:
         print("Admin credentials loaded. Authentication is ENABLED.")
+        print("Check above for initial credentials if this is the first run.")
 
 @app.get("/", include_in_schema=False)
 def root():
@@ -158,19 +159,15 @@ def root():
 async def login(request: LoginRequest):
     """
     Authenticate an admin user and return an access token.
+    DEPRECATED: This endpoint is deprecated as we're now using API key authentication.
     """
-    # In a real implementation, you would verify the credentials against a database
-    # For simplicity, we'll just check if the email and password match the admin credentials
-    if request.email == "admin@db-forge.local" and request.password == "admin":
-        # Generate a JWT token
-        access_token = create_access_token(data={"sub": request.email})
-        return LoginResponse(access_token=access_token, token_type="bearer")
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    # This endpoint is deprecated as we're now using API key authentication
+    # Keeping it for backward compatibility but it's not used in the current implementation
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Login endpoint deprecated. Use API key authentication with X-API-Key header.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 # Include the admin router with protected endpoints
 # This must be at the end of the file, after all routes have been added to the router

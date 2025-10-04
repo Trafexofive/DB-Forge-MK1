@@ -73,7 +73,7 @@ test:
 clean-test-dbs:
 	@echo -e "${RED}Cleaning up test databases...${NC}"
 	# Stop and remove all db-worker containers
-	-@for id in $$(docker ps -a -q --filter "label=db-worker"); do docker stop $$id && docker rm -f $$id; done
+	-@for id in $(docker ps -a -q --filter "label=db-worker"); do docker stop $id && docker rm -f $id; done
 	# Remove the persistent data directory
 	sleep 1 # Give Docker a moment to release file locks
 	@rm -rf ./db-data

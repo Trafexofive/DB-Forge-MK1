@@ -96,6 +96,8 @@ Lists all currently managed database instances.
 
 These endpoints are for interacting with the data inside a specific database.
 
+
+
 ### `POST /api/db/{db_name}/query`
 
 Executes a raw SQL query against the specified database. This is the most flexible and powerful endpoint, designed for direct data manipulation and retrieval. It supports parameterized queries for safety. The `sql` field can contain any valid SQLite statement (SELECT, INSERT, UPDATE, DELETE, CREATE, etc.).
