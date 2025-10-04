@@ -1,0 +1,333 @@
+/* DB-Forge TUI Styles */
+
+/* Main layout */
+Screen {
+    background: $surface;
+}
+
+#main-container {
+    layout: horizontal;
+}
+
+#sidebar {
+    width: 25%;
+    background: $panel;
+    border-right: vkey $primary;
+    padding: 1;
+}
+
+#sidebar-title {
+    text-align: center;
+    text-style: bold;
+    color: $accent;
+    padding-bottom: 1;
+    border-bottom: hkey $primary;
+    margin-bottom: 1;
+}
+
+#database-tree {
+    height: 1fr;
+    margin-bottom: 1;
+}
+
+#sidebar-actions {
+    height: auto;
+}
+
+.sidebar-btn {
+    width: 100%;
+    margin-top: 1;
+}
+
+#main-content {
+    width: 75%;
+}
+
+/* Status bar */
+#status-bar {
+    height: 3;
+    dock: bottom;
+    background: $panel;
+    border-top: hkey $primary;
+    padding: 0 1;
+}
+
+#connection-status,
+#database-info,
+#query-info {
+    width: 1fr;
+    content-align: left middle;
+}
+
+/* Dashboard specific styles */
+DashboardWidget .metric-box {
+    border: round $primary;
+    height: 8;
+    padding: 1;
+    text-align: center;
+}
+
+DashboardWidget .metric-value {
+    text-style: bold;
+    color: $success;
+}
+
+DashboardWidget .metric-label {
+    color: $text-muted;
+}
+
+DashboardWidget .database-list,
+DashboardWidget .activity-log {
+    border: round $primary;
+    padding: 1;
+}
+
+/* Query Editor specific styles */
+QueryEditorWidget .sql-editor {
+    border: round $primary;
+    padding: 1;
+}
+
+QueryEditorWidget .results-panel {
+    border: round $primary;
+    padding: 1;
+}
+
+QueryEditorWidget .query-history {
+    border: round $primary;
+    padding: 1;
+}
+
+QueryEditorWidget .schema-panel {
+    border: round $primary;
+    padding: 1;
+}
+
+QueryEditorWidget .editor-toolbar {
+    height: 3;
+    dock: top;
+    padding: 0 1;
+}
+
+/* Database Manager specific styles */
+DatabaseManagerWidget .db-info,
+DatabaseManagerWidget .db-actions,
+DatabaseManagerWidget .table-list,
+DatabaseManagerWidget .db-stats {
+    border: round $primary;
+    padding: 1;
+}
+
+DatabaseManagerWidget .action-button {
+    width: 100%;
+    margin: 1 0;
+}
+
+/* Table Browser specific styles */
+TableBrowserWidget .browser-toolbar {
+    height: 5;
+    dock: top;
+    border: round $primary;
+    padding: 1;
+}
+
+TableBrowserWidget .data-table {
+    border: round $primary;
+}
+
+TableBrowserWidget .browser-status {
+    height: 3;
+    dock: bottom;
+    border: round $primary;
+    padding: 1;
+}
+
+TableBrowserWidget .filter-controls {
+    layout: horizontal;
+    align: left middle;
+}
+
+TableBrowserWidget .pagination-controls {
+    layout: horizontal;
+    align: center middle;
+}
+
+/* Data table styling */
+DataTable {
+    scrollbar-gutter: stable;
+}
+
+DataTable > .datatable--header {
+    text-style: bold;
+    background: $primary 50%;
+}
+
+DataTable > .datatable--fixed-columns {
+    background: $surface;
+}
+
+DataTable:focus > .datatable--cursor {
+    background: $accent 30%;
+}
+
+/* Button styling */
+Button.-primary {
+    background: $primary;
+}
+
+Button.-error {
+    background: $error;
+}
+
+Button:hover {
+    background: $primary 70%;
+}
+
+Button:focus {
+    background: $primary;
+    border: thick $accent;
+}
+
+/* Input styling */
+Input {
+    border: round $primary;
+    background: $surface;
+}
+
+Input:focus {
+    border: round $accent;
+}
+
+/* Select styling */
+Select {
+    border: round $primary;
+    background: $surface;
+}
+
+Select:focus {
+    border: round $accent;
+}
+
+/* List styling */
+ListView {
+    border: round $primary;
+    scrollbar-gutter: stable;
+}
+
+ListItem {
+    padding: 0 1;
+}
+
+ListItem:hover {
+    background: $primary 30%;
+}
+
+ListItem.-selected {
+    background: $accent 50%;
+}
+
+/* Tree styling */
+Tree {
+    scrollbar-gutter: stable;
+}
+
+Tree:focus {
+    border: thick $accent;
+}
+
+/* Static text styling */
+Static {
+    color: $text;
+}
+
+Label {
+    color: $text;
+    text-style: bold;
+}
+
+/* Container styling */
+Container {
+    background: $surface;
+}
+
+Horizontal {
+    height: auto;
+}
+
+Vertical {
+    width: auto;
+}
+
+/* Tabbed content styling */
+TabbedContent {
+    background: $surface;
+}
+
+TabPane {
+    padding: 1;
+}
+
+/* Collapsible styling */
+Collapsible {
+    border: round $primary;
+    margin: 1 0;
+}
+
+Collapsible > Contents {
+    padding: 1;
+}
+
+/* TextArea styling */
+TextArea {
+    border: round $primary;
+    scrollbar-gutter: stable;
+}
+
+TextArea:focus {
+    border: thick $accent;
+}
+
+/* Sparkline styling */
+Sparkline {
+    color: $accent;
+    background: $surface;
+}
+
+/* Log styling */
+Log {
+    border: round $primary;
+    scrollbar-gutter: stable;
+    background: $surface;
+}
+
+/* Progress bar styling */
+ProgressBar {
+    color: $success;
+    background: $surface;
+}
+
+/* Loading indicator */
+LoadingIndicator {
+    color: $accent;
+}
+
+/* Notification styling */
+Notification {
+    border: thick $primary;
+    background: $panel;
+}
+
+Notification.-information {
+    border: thick $success;
+    background: $success 20%;
+}
+
+Notification.-warning {
+    border: thick $warning;
+    background: $warning 20%;
+}
+
+Notification.-error {
+    border: thick $error;
+    background: $error 20%;
+}

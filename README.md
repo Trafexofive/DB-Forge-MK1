@@ -88,6 +88,15 @@ dbforge::Client client("http://db.localhost");
 client.spawn_database("my-app");
 ```
 
+### 🖥️ TUI Client (Interactive Terminal UI)
+```bash
+cd clients/tui
+make install && make run
+
+# Features: Real-time dashboard, SQL editor, table browser
+# Navigate with keyboard, vim-like bindings available
+```
+
 **Features:**
 - Complete API coverage for all DB-Forge endpoints
 - Exception-safe error handling with detailed error information  
