@@ -1,5 +1,6 @@
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import { DatabaseOverview } from "@/components/dashboard/database-overview"
+import { SystemMetrics } from "@/components/dashboard/system-metrics"
 
 export default function Home() {
   return (
@@ -11,6 +12,7 @@ export default function Home() {
             Manage your databases and monitor system health
           </p>
         </div>
+        <SystemMetrics />
         <DatabaseOverview />
       </div>
     </DashboardShell>

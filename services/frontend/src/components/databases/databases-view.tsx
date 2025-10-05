@@ -5,9 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { SQLEditor } from "./sql-editor"
 import { 
   Database, 
   Plus,
@@ -20,7 +20,8 @@ import {
   Square,
   Settings,
   Terminal,
-  Table
+  Table,
+  Code
 } from "lucide-react"
 import { apiClient, DatabaseInstance } from "@/lib/api"
 
@@ -205,83 +206,47 @@ export function DatabasesView() {
         </TabsContent>
 
         <TabsContent value="query" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Terminal className="w-5 h-5 mr-2" />
-                SQL Query Console
-              </CardTitle>
-              <CardDescription>
-                Execute SQL queries against your database instances
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Select Database</label>
-                <select 
-                  className="w-full p-2 border rounded-md"
-                  value={selectedDb || ''}
-                  onChange={(e) => setSelectedDb(e.target.value)}
-                >
-                  <option value="">Select a database...</option>
-                  {databases.filter(db => db.status.toLowerCase().includes('running')).map(db => (
-                    <option key={db.name} value={db.name}>{db.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">SQL Query</label>
-                <Textarea
-                  placeholder="Enter your SQL query here..."
-                  value={sqlQuery}
-                  onChange={(e) => setSqlQuery(e.target.value)}
-                  rows={6}
-                  className="font-mono"
-                />
-              </div>
-
-              <Button 
-                onClick={executeQuery}
-                disabled={!selectedDb || !sqlQuery.trim() || queryLoading}
-              >
-                {queryLoading ? (
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Play className="w-4 h-4 mr-2" />
-                )}
-                Execute Query
-              </Button>
-
-              {queryResult && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Results</label>
-                  {queryResult.error ? (
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-                      <p className="text-red-700 text-sm">{queryResult.error}</p>
-                    </div>
-                  ) : (
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-md">
-                      {queryResult.data ? (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">
-                            {queryResult.data.length} row(s) returned
-                          </p>
-                          <pre className="text-xs overflow-auto max-h-96">
-                            {JSON.stringify(queryResult.data, null, 2)}
-                          </pre>
-                        </div>
-                      ) : (
-                        <p className="text-green-700 text-sm">
-                          Query executed successfully. {queryResult.rows_affected || 0} rows affected.
-                        </p>
-                      )}
+          {selectedDb ? (
+            <SQLEditor databaseName={selectedDb} />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Code className="w-5 h-5 mr-2" />
+                  SQL Query Editor
+                </CardTitle>
+                <CardDescription>
+                  Select a running database to execute SQL queries
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Select Database</label>
+                    <select 
+                      className="w-full p-2 border rounded-md"
+                      value={selectedDb || ''}
+                      onChange={(e) => setSelectedDb(e.target.value)}
+                    >
+                      <option value="">Choose a database...</option>
+                      {databases.filter(db => db.status.toLowerCase().includes('running')).map(db => (
+                        <option key={db.name} value={db.name}>{db.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {databases.filter(db => db.status.toLowerCase().includes('running')).length === 0 && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 text-yellow-700">
+                        <AlertCircle className="w-5 h-5" />
+                        <span>No running databases available. Create and start a database first.</span>
+                      </div>
                     </div>
                   )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="management" className="space-y-6">
